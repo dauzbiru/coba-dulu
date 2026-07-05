@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Laporan {{ $report->gerai->kode_gerai }}</title>
+    <style>
+        @page { margin: 15px; }
+        body { font-family: '{{ $fontLoaded ? 'Roboto' : 'DejaVu Sans' }}', sans-serif; font-size: 11px; color: #333; margin: 0; }
+        h1 { font-size: 20px; font-weight: 700; margin: 0 0 20px 0; text-align: center; }
+        .header-table { width: auto; margin-bottom: 24px; border-collapse: collapse; }
+        .header-table td { padding: 2px 8px 2px 0; vertical-align: top; }
+        .header-label { color: #666; white-space: nowrap; }
+        .boxes { margin-bottom: 24px; }
+        .box { border: 1px solid #ccc; border-radius: 6px; padding: 10px; margin-bottom: 12px; }
+        .box-label { font-weight: bold; font-size: 10px; color: #666; margin-bottom: 6px; text-transform: uppercase; }
+        .box-content { font-size: 11px; }
+    </style>
+</head>
+<body>
+    <h1>{{ $revisi ? 'Revisi - ' : '' }}Laporan {{ ucfirst(str_replace('-', ' ', $report->type)) }}</h1>
+
+    <table class="header-table">
+        <tr>
+            <td class="header-label">Gerai</td>
+            <td>: {{ $report->gerai->nama_gerai }} ({{ $report->gerai->kode_gerai }})</td>
+        </tr>
+        <tr>
+            <td class="header-label">Tanggal</td>
+            <td>: {{ $report->checkin_at->format('d-m-Y') }} ({{ $report->checkin_at->format('H:i') }} - {{ $report->submit_at ? $report->submit_at->format('H:i') : '-' }})</td>
+        </tr>
+        <tr>
+            <td class="header-label">Petugas</td>
+            <td>: {{ $report->user?->name ?? '-' }}</td>
+        </tr>
+    </table>
+
+    <div class="boxes">
+            <div class="box">
+                <div class="box-label">Minor</div>
+                <div class="box-content">{!! $finding && $finding->minor ? nl2br(e($finding->minor)) : '' !!}</div>
+            </div>
+            <div class="box">
+                <div class="box-label">Mayor</div>
+                <div class="box-content">{!! $finding && $finding->major ? nl2br(e($finding->major)) : '' !!}</div>
+            </div>
+            @if ($finding && ($finding->pengawas || $finding->rata_rata_aj || ($finding->tds && $prefix !== 'pra-monitoring') || $finding->mesin_ozon || $finding->peringatan_awal || $finding->note || $finding->kondisi_cat || $finding->kondisi_awning || $finding->kondisi_vinyl || $finding->kondisi_stiker_kaca))
+                <div class="box">
+                    <div class="box-label">Peringatan Awal</div>
+                    <div class="box-content" style="word-wrap: break-word;">
+                        @if ($finding->pengawas)<div>{!! nl2br(e($finding->pengawas)) !!}</div>@endif
+                        @if ($finding->rata_rata_aj)<div>Rerata AJ ± {{ $finding->rata_rata_aj }} gln/hr</div>@endif
+                        @if ($finding->tds && $prefix !== 'pra-monitoring')<div>TDS: {{ str_replace('/', ' ppm/', $finding->tds) }}{{ str_contains($finding->tds, '/') ? '°C' : '' }}</div>@endif
+                        @if ($finding->mesin_ozon)<div>MO: {{ $finding->mesin_ozon }}</div>@endif
+                        @if ($finding->peringatan_awal)<div>
+                            @foreach(preg_split('/\r?\n/', $finding->peringatan_awal) as $line)
+                                @if (trim($line))
+                                    <div style="page-break-inside: avoid;">{!! nl2br(e($line)) !!}</div>
+                                @endif
+                            @endforeach
+                        </div>@endif
+                        @if ($finding->note)<div style="margin-top:12px">Note:</div><div>{!! nl2br(e($finding->note)) !!}</div>@endif
+                        @if ($finding->kondisi_cat || $finding->kondisi_awning || $finding->kondisi_vinyl || $finding->kondisi_stiker_kaca)
+                            <div style="margin-top:12px">Checklist tampilan gerai:</div>
+                            <div>Kondisi cat: {{ $finding->kondisi_cat ?: 'Baik' }}</div>
+                            <div>Kondisi awning: {{ $finding->kondisi_awning ?: 'Baik' }}</div>
+                            <div>Kondisi vinyl reklame dinding/jalan: {{ $finding->kondisi_vinyl ?: 'Baik' }}</div>
+                            <div>Kondisi stiker kaca: {{ $finding->kondisi_stiker_kaca ?: 'Baik' }}</div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        @if ($finding)
+            <table style="width:100%; margin-bottom: 12px;">
+                <tr>
+                    <td style="width:50%; padding: 10px; vertical-align: top;">
+                        <div class="box-label">TTD Petugas</div>
+                        @if ($ttdImages['ttd_petugas'])
+                            <img src="{{ $ttdImages['ttd_petugas'] }}" style="width: 80px; height: 80px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+                        @else
+                            <div class="box-content" style="color: #999; font-style: italic;">Belum ada</div>
+                        @endif
+                    </td>
+                    <td style="width:50%; padding: 10px; vertical-align: top; text-align: right;">
+                        <div class="box-label" style="text-align: right;">TTD Pimpinan</div>
+                        @if ($ttdImages['ttd_pimpinan'])
+                            <img src="{{ $ttdImages['ttd_pimpinan'] }}" style="width: 80px; height: 80px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;">
+                        @else
+                            <div class="box-content" style="color: #999; font-style: italic;">Belum ada</div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        @endif
+    </div>
+</body>
+</html>

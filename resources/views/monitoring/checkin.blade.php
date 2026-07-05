@@ -1,0 +1,173 @@
+@extends('layouts.admin')
+
+@section('title', 'Checkin - ' . $gerai->nama_gerai)
+
+@push('head')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+@endpush
+
+@section('content')
+<div class="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
+        <a href="/{{ $prefix }}" class="text-sm text-blue-600 hover:underline">&larr; Kembali</a>
+        <h2 class="text-base sm:text-lg font-semibold text-gray-800 mt-1">Checkin Gerai</h2>
+    </div>
+
+    <div class="px-4 sm:px-6 py-4">
+        <div class="mb-4 p-3 bg-gray-50 rounded-lg">
+            <p class="text-sm text-gray-700"><strong>Gerai:</strong> {{ $gerai->kode_gerai }} - {{ $gerai->nama_gerai }}</p>
+            @if ($gerai->franchisee)<p class="text-sm text-gray-700 mt-1"><strong>Franchisee:</strong> {{ $gerai->franchisee }}</p>@endif
+        </div>
+
+        <form method="POST" action="/{{ $prefix }}/checkin/{{ $gerai->id }}">
+            @csrf
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Lokasi Checkin</label>
+                <div id="map" class="w-full h-48 rounded-lg border border-gray-300 mb-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" name="location" id="location" required readonly
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 bg-gray-50"
+                        placeholder="Mendeteksi lokasi...">
+                    <button type="button" id="refreshLocation" class="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                        Refresh
+                    </button>
+                </div>
+                <p id="locationStatus" class="text-xs text-gray-400 mt-1"></p>
+                @error('location')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
+                    <input type="date" name="checkin_at" value="{{ now()->format('Y-m-d') }}" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Jam</label>
+                    <input type="text" value="{{ now()->format('H:i:s') }}" readonly
+                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 text-gray-600">
+                </div>
+            </div>
+
+            @if ($periods->isNotEmpty())
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Periode Semester</label>
+                    <select name="periode_label" id="periode_label"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
+                    <option value="">Pilih Periode</option>
+                    @foreach ($periods as $p)
+                        <option value="{{ $p->label }}" {{ $loop->first ? 'selected' : '' }}>
+                            {{ $p->label }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('periode_label')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+            @endif
+
+            <button type="submit"
+                class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
+                Checkin
+            </button>
+        </form>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function() {
+    var input = document.getElementById('location');
+    var status = document.getElementById('locationStatus');
+    var timedOut = false;
+
+    var map = L.map('map').setView([-2.5, 118], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+    L.marker([-2.5, 118]).addTo(map);
+    setTimeout(function() { map.invalidateSize(); }, 200);
+
+    if (!navigator.geolocation) {
+        status.textContent = 'Geolocation tidak didukung. Isi manual.';
+        input.readOnly = false;
+        input.classList.remove('bg-gray-50');
+        input.placeholder = 'Masukkan lokasi manual';
+        return;
+    }
+
+    function detectLocation() {
+        timedOut = false;
+        input.readOnly = true;
+        input.classList.add('bg-gray-50');
+        input.placeholder = 'Mendeteksi lokasi...';
+        status.textContent = 'Mendapatkan lokasi...';
+
+        setTimeout(function() {
+            if (input.readOnly) {
+                timedOut = true;
+                input.readOnly = false;
+                input.classList.remove('bg-gray-50');
+                input.placeholder = 'Masukkan lokasi manual';
+                status.textContent = 'Deteksi lokasi lambat, isi manual atau tunggu...';
+            }
+        }, 5000);
+
+        navigator.geolocation.getCurrentPosition(
+            function(pos) {
+                if (timedOut) return;
+                var lat = pos.coords.latitude;
+                var lng = pos.coords.longitude;
+                status.textContent = 'Mengonversi ke alamat...';
+
+                fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=id', {
+                    headers: { 'User-Agent': 'Monapps/1.0' }
+                })
+                    .then(function(res) { return res.json(); })
+                    .then(function(data) {
+                        var address = data.display_name || (lat.toFixed(6) + ', ' + lng.toFixed(6));
+                        input.value = address;
+                        status.textContent = 'Lokasi terdeteksi otomatis.';
+                        input.readOnly = false;
+                        input.classList.remove('bg-gray-50');
+                        map.eachLayer(function(l) { if (l instanceof L.Marker) map.removeLayer(l); });
+                        L.marker([lat, lng]).addTo(map);
+                        map.setView([lat, lng], 15);
+                    })
+                    .catch(function() {
+                        input.value = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                        status.textContent = 'Lokasi (koordinat) terdeteksi.';
+                        input.readOnly = false;
+                        input.classList.remove('bg-gray-50');
+                        map.eachLayer(function(l) { if (l instanceof L.Marker) map.removeLayer(l); });
+                        L.marker([lat, lng]).addTo(map);
+                        map.setView([lat, lng], 15);
+                    });
+            },
+            function(err) {
+                var msg = 'Gagal mengambil lokasi';
+                switch(err.code) {
+                    case err.PERMISSION_DENIED: msg = 'Izin lokasi ditolak. Isi manual.'; break;
+                    case err.POSITION_UNAVAILABLE: msg = 'Lokasi tidak tersedia.'; break;
+                    case err.TIMEOUT: msg = 'Waktu habis. Coba lagi.'; break;
+                }
+                status.textContent = msg;
+                input.readOnly = false;
+                input.classList.remove('bg-gray-50');
+                input.placeholder = 'Masukkan lokasi manual';
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+        );
+    }
+
+    detectLocation();
+    document.getElementById('refreshLocation').addEventListener('click', detectLocation);
+})();
+</script>
+@endpush
