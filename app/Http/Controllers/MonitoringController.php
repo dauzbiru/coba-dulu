@@ -1504,25 +1504,25 @@ class MonitoringController extends Controller
                         };
 
                         $infoRows = [];
-                        $pengawas = $finding->pengawas ?? '';
+                        $pengawas = $finding?->pengawas ?? '';
                         if ($pengawas !== '') {
                             foreach (preg_split('/\r?\n/', $pengawas) as $line) {
                                 if (trim($line) !== '') $infoRows[] = $makeBRow(trim($line));
                             }
                         }
-                        $aj = $finding->rata_rata_aj ?? '';
+                        $aj = $finding?->rata_rata_aj ?? '';
                         if ($aj !== '') {
                             $infoRows[] = $makeBRow('Rerata AJ ± ' . $aj . ' gln/hr');
                         }
                         if ($this->type !== 'pra-monitoring') {
-                            $tds = $finding->tds ?? '';
+                            $tds = $finding?->tds ?? '';
                             if ($tds !== '') {
                                 $tdsDisplay = str_replace('/', ' ppm/', $tds);
                                 if (str_contains($tds, '/')) $tdsDisplay .= '°C';
                                 $infoRows[] = $makeBRow('TDS: ' . $tdsDisplay);
                             }
                         }
-                        $mo = $finding->mesin_ozon ?? '';
+                        $mo = $finding?->mesin_ozon ?? '';
                         if ($mo !== '') {
                             $infoRows[] = $makeBRow('MO: ' . $mo);
                         }
@@ -1532,7 +1532,7 @@ class MonitoringController extends Controller
                             if (trim($line) !== '') $infoRows[] = $makeBRow($line);
                         }
                         $infoRows[] = $makeBRow('');
-                        $noteContent = $finding->note ?? '';
+                        $noteContent = $finding?->note ?? '';
                         if ($noteContent !== '') {
                             $infoRows[] = $makeBRow('Note:');
                             foreach (preg_split('/\r?\n/', $noteContent) as $line) {
@@ -1541,10 +1541,10 @@ class MonitoringController extends Controller
                         }
                         $infoRows[] = $makeBRow('');
                         $infoRows[] = $makeBRow('Checklist tampilan gerai:');
-                        $infoRows[] = $makeBRow('Kondisi cat: ' . ($finding->kondisi_cat ?: 'Baik'));
-                        $infoRows[] = $makeBRow('Kondisi awning: ' . ($finding->kondisi_awning ?: 'Baik'));
-                        $infoRows[] = $makeBRow('Kondisi vinyl reklame dinding/jalan: ' . ($finding->kondisi_vinyl ?: 'Baik'));
-                        $infoRows[] = $makeBRow('Kondisi stiker kaca: ' . ($finding->kondisi_stiker_kaca ?: 'Baik'));
+                        $infoRows[] = $makeBRow('Kondisi cat: ' . ($finding?->kondisi_cat ?: 'Baik'));
+                        $infoRows[] = $makeBRow('Kondisi awning: ' . ($finding?->kondisi_awning ?: 'Baik'));
+                        $infoRows[] = $makeBRow('Kondisi vinyl reklame dinding/jalan: ' . ($finding?->kondisi_vinyl ?: 'Baik'));
+                        $infoRows[] = $makeBRow('Kondisi stiker kaca: ' . ($finding?->kondisi_stiker_kaca ?: 'Baik'));
                         $infoRows[] = $makeBRow('');
 
                         // Insert all info rows before NOTE
