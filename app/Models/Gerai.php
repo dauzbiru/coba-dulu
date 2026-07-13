@@ -6,12 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Gerai extends Model
 {
-    protected $fillable = ['kode_gerai', 'nama_gerai', 'franchisee', 'opening_at'];
+    protected $fillable = ['kode_gerai', 'nama_gerai', 'franchisee', 'alamat', 'email', 'no_telepon', 'opening_at', 'is_active', 'closed_at'];
 
     protected function casts(): array
     {
         return [
             'opening_at' => 'date:Y-m-d',
+            'closed_at' => 'date:Y-m-d',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

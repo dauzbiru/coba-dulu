@@ -1,11 +1,10 @@
 @extends('layouts.admin')
 
-@section('title', 'Analisis Min Max - Monapps')
+@section('title', 'Analisis Min Max - MARS')
 
 @section('content')
 <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-        <a href="/report" class="text-sm text-blue-600 hover:underline">&larr; Kembali ke Laporan</a>
         <h2 class="text-base sm:text-lg font-semibold text-gray-800 mt-1">Analisis Min Max Checklist</h2>
         <p class="text-xs sm:text-sm text-gray-500 mt-1">Pilih periode untuk melihat nilai minimum, maksimum, dan rata-rata tiap checklist dari semua gerai.</p>
     </div>

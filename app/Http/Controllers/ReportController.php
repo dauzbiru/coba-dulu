@@ -18,34 +18,94 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $reports = $this->loadReports(type: 'monitoring');
-        $title = 'Laporan Monitoring';
+        $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
         $type = 'monitoring';
+        $title = 'Laporan Monitoring';
         $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
-        return view('report.index', compact('reports', 'title', 'type', 'periods'));
-    }
 
-    public function preMonitoring()
-    {
-        $reports = $this->loadReports(type: 'pra-monitoring');
-        $title = 'Laporan Pra-Monitoring';
-        $type = 'pra-monitoring';
-        $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
-        return view('report.index', compact('reports', 'title', 'type', 'periods'));
-    }
+        $query = MonitoringReport::with('gerai', 'user')
+            ->where('type', $type)
+            ->whereNotNull('submit_at');
 
-    private function loadReports(string $type)
-    {
-        $query = MonitoringReport::with('gerai', 'user', 'results.item.criteria')
-            ->where('type', $type);
-
-        if ($type === 'monitoring') {
-            $query->whereNotNull('submit_at');
+        if (Auth::user()->role === 'guest') {
+            $query->where('user_id', Auth::id());
         }
 
-        return $query->orderBy('checkin_at', 'desc')
-            ->get()
-            ->map(function ($report) {
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('gerai', function ($g) use ($search) {
+                    $g->where('kode_gerai', 'like', "%{$search}%")
+                      ->orWhere('nama_gerai', 'like', "%{$search}%");
+                })->orWhereHas('user', function ($u) use ($search) {
+                    $u->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        $reports = $query
+            ->orderBy('checkin_at', 'desc')
+            ->paginate(50)
+            ->through(function ($report) {
+                if ($report->nilai !== null) {
+                    $report->total_score = (float) $report->nilai;
+                } else {
+                    $report->load('results.item.criteria');
+                    $total = 0;
+                    foreach ($report->results as $result) {
+                        $item = $result->item;
+                        if (!$item || !$item->bobot) continue;
+                        $criteriaCount = $item->criteria->count();
+                        if ($criteriaCount <= 1) continue;
+                        $interval = $item->bobot / ($criteriaCount - 1);
+                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
+                        if ($idx !== false) {
+                            $total += $item->bobot - ($interval * $idx);
+                        }
+                    }
+                    $report->total_score = $total;
+                }
+                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $report->total_score);
+                return $report;
+            });
+
+        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+
+        return view('report.index', compact('reports', 'title', 'type', 'periods', 'gerais'));
+    }
+
+    public function preMonitoring(Request $request)
+    {
+        $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
+        $type = 'pra-monitoring';
+        $title = 'Laporan Pra-Monitoring';
+        $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
+
+        $query = MonitoringReport::with('gerai', 'user')
+            ->where('type', $type)
+            ->whereNotNull('submit_at');
+
+        if (Auth::user()->role === 'guest') {
+            $query->where('user_id', Auth::id());
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('gerai', function ($g) use ($search) {
+                    $g->where('kode_gerai', 'like', "%{$search}%")
+                      ->orWhere('nama_gerai', 'like', "%{$search}%");
+                })->orWhereHas('user', function ($u) use ($search) {
+                    $u->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        $reports = $query
+            ->orderBy('checkin_at', 'desc')
+            ->paginate(50)
+            ->through(function ($report) {
+                $report->load('results.item.criteria');
                 $total = 0;
                 foreach ($report->results as $result) {
                     $item = $result->item;
@@ -59,9 +119,67 @@ class ReportController extends Controller
                     }
                 }
                 $report->total_score = $total;
-                $report->grade = \App\Models\MonitoringReport::gradeFromScore($total);
+                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $total);
                 return $report;
             });
+
+        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+
+        return view('report.index', compact('reports', 'title', 'type', 'periods', 'gerais'));
+    }
+
+    public function reMonitoring(Request $request)
+    {
+        $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
+        $type = 're-monitoring';
+        $title = 'Laporan Re-Monitoring';
+        $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
+
+        $query = MonitoringReport::with('gerai', 'user')
+            ->where('type', $type)
+            ->whereNotNull('submit_at');
+
+        if (Auth::user()->role === 'guest') {
+            $query->where('user_id', Auth::id());
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('gerai', function ($g) use ($search) {
+                    $g->where('kode_gerai', 'like', "%{$search}%")
+                      ->orWhere('nama_gerai', 'like', "%{$search}%");
+                })->orWhereHas('user', function ($u) use ($search) {
+                    $u->where('name', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        $reports = $query
+            ->orderBy('checkin_at', 'desc')
+            ->paginate(50)
+            ->through(function ($report) {
+                $report->load('results.item.criteria');
+                $total = 0;
+                foreach ($report->results as $result) {
+                    $item = $result->item;
+                    if (!$item || !$item->bobot) continue;
+                    $criteriaCount = $item->criteria->count();
+                    if ($criteriaCount <= 1) continue;
+                    $interval = $item->bobot / ($criteriaCount - 1);
+                    $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
+                    if ($idx !== false) {
+                        $total += $item->bobot - ($interval * $idx);
+                    }
+                }
+                $report->total_score = $total;
+                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $total);
+                return $report;
+            });
+
+        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+
+        return view('report.index', compact('reports', 'title', 'type', 'periods', 'gerais'));
     }
 
     public function pdf(Request $request)
@@ -98,7 +216,7 @@ class ReportController extends Controller
                 $result = $results->get($item->id);
                 $nilai = $result && $result->criterion ? $result->criterion->description : '-';
                 $writer->addRow(Row::fromValues([
-                    $no++, $cat->name, $item->name, $nilai, $result->notes ?? '',
+                    $no++, $cat->name, $item->name, $nilai, $result?->notes ?? '',
                 ]));
             }
         }
@@ -163,7 +281,7 @@ class ReportController extends Controller
             [
                 'name' => 'Karyawan & Pimpinan Gerai',
                 'groups' => [
-                    ['name' => 'Pelayanan', 'category_ids' => [1, 2, 3, 4]],
+                    ['name' => 'Pelayanan', 'category_ids' => [2, 3, 4]],
                     ['name' => 'Penampilan & Tingkah Laku Karyawan', 'category_ids' => [6, 7, 8]],
                 ],
                 'category_ids' => [5, 9],
@@ -174,7 +292,7 @@ class ReportController extends Controller
             ],
             [
                 'name' => 'Produk Operasional',
-                'category_ids' => [15, 16, 17, 19, 18],
+                'category_ids' => [15, 16, 17, 19, 18, 20],
             ],
         ];
 
@@ -430,10 +548,123 @@ class ReportController extends Controller
         return response()->download($filename)->deleteFileAfterSend(true);
     }
 
-    public function exportAllExcel(Request $request)
+    public function excelDetail(Request $request)
     {
         $rules = ['type' => 'required|in:monitoring,pra-monitoring'];
         if ($request->type === 'pra-monitoring') {
+            $rules['month'] = 'required|string';
+        } else {
+            $rules['periode_label'] = 'required|string';
+        }
+        $request->validate($rules);
+
+        $query = MonitoringReport::with('gerai', 'finding')
+            ->where('type', $request->type)
+            ->whereNotNull('submit_at');
+
+        if ($request->type === 'pra-monitoring') {
+            $month = $request->month;
+            $query->whereYear('checkin_at', substr($month, 0, 4))
+                  ->whereMonth('checkin_at', substr($month, 5, 2));
+        } else {
+            $query->where('periode_label', $request->periode_label);
+        }
+
+        $reports = $query->orderBy('checkin_at')->get();
+
+        if ($reports->isEmpty()) {
+            return back()->with('error', 'Tidak ada laporan untuk periode ini.');
+        }
+
+        $filename = storage_path('app/detail-laporan-' . $request->type . '-' . now()->format('Ymd_His') . '.xlsx');
+        $writer = new Writer();
+        $writer->openToFile($filename);
+
+        $sheets = [
+            ['name' => 'PS', 'header' => ['Kode Gerai', 'Pengawas'], 'field' => 'pengawas', 'split' => true],
+            ['name' => 'Rata-rata AJ', 'header' => ['Kode Gerai', 'Rata-rata AJ'], 'field' => 'rata_rata_aj', 'split' => true],
+            ['name' => 'TDS', 'header' => ['Kode Gerai', 'TDS'], 'field' => 'tds', 'split' => true],
+            ['name' => 'Mesin Ozon', 'header' => ['Kode Gerai', 'Mesin Ozon'], 'field' => 'mesin_ozon', 'split' => true],
+            ['name' => 'Temuan', 'header' => ['Kode Gerai', 'Peringatan Awal'], 'field' => null, 'split' => false],
+            ['name' => 'Note', 'header' => ['Kode Gerai', 'Note'], 'field' => 'note', 'split' => true],
+            ['name' => 'Cat', 'header' => ['Kode Gerai', 'Kondisi Cat'], 'field' => 'kondisi_cat', 'split' => true],
+            ['name' => 'Awning', 'header' => ['Kode Gerai', 'Kondisi Awning'], 'field' => 'kondisi_awning', 'split' => true],
+            ['name' => 'Vinyl Reklame', 'header' => ['Kode Gerai', 'Kondisi Vinyl Reklame'], 'field' => 'kondisi_vinyl', 'split' => true],
+            ['name' => 'Stiker Kaca', 'header' => ['Kode Gerai', 'Kondisi Stiker Kaca'], 'field' => 'kondisi_stiker_kaca', 'split' => true],
+        ];
+
+        $firstSheet = true;
+        foreach ($sheets as $sheetDef) {
+            if ($request->type === 'pra-monitoring' && $sheetDef['field'] === 'tds') {
+                continue;
+            }
+
+            if ($firstSheet) {
+                $sheet = $writer->getCurrentSheet();
+                $firstSheet = false;
+            } else {
+                $sheet = $writer->addNewSheetAndMakeItCurrent();
+            }
+            $sheet->setName($sheetDef['name']);
+
+            $writer->addRow(Row::fromValues($sheetDef['header']));
+
+            foreach ($reports as $report) {
+                $finding = $report->finding;
+                if (!$finding) continue;
+
+                if (!$report->gerai) continue;
+                $kode = $report->gerai->kode_gerai;
+
+                if ($sheetDef['name'] === 'Temuan') {
+                    $paLines = explode("\n", str_replace("\r\n", "\n", $finding->peringatan_awal ?? ''));
+                    foreach ($paLines as $line) {
+                        $trimmed = trim($line);
+                        if ($trimmed === '') continue;
+                        $writer->addRow(Row::fromValues([
+                            $kode,
+                            $trimmed,
+                        ]));
+                    }
+                } else {
+                    $value = $finding->{$sheetDef['field']} ?? '';
+                    if ($sheetDef['field'] === 'rata_rata_aj') {
+                        $lines = explode("\n", str_replace("\r\n", "\n", $value));
+                        foreach ($lines as $line) {
+                            $trimmed = trim($line);
+                            if ($trimmed === '') continue;
+                            $writer->addRow(Row::fromValues([$kode, $trimmed . ' gln/hr']));
+                        }
+                    } elseif ($sheetDef['field'] === 'tds') {
+                        $lines = explode("\n", str_replace("\r\n", "\n", $value));
+                        foreach ($lines as $line) {
+                            $trimmed = trim($line);
+                            if ($trimmed === '') continue;
+                            $tdsDisplay = str_replace('/', ' ppm/', $trimmed) . (str_contains($trimmed, '/') ? '°C' : '');
+                            $writer->addRow(Row::fromValues([$kode, $tdsDisplay]));
+                        }
+                    } elseif ($sheetDef['split']) {
+                        $lines = explode("\n", str_replace("\r\n", "\n", $value));
+                        foreach ($lines as $line) {
+                            $trimmed = trim($line);
+                            if ($trimmed === '') continue;
+                            $writer->addRow(Row::fromValues([$kode, $trimmed]));
+                        }
+                    } else {
+                        $writer->addRow(Row::fromValues([$kode, $value]));
+                    }
+                }
+            }
+        }
+
+        $writer->close();
+        return response()->download($filename)->deleteFileAfterSend(true);
+    }
+
+    public function exportAllExcel(Request $request)
+    {
+        $rules = ['type' => 'required|in:monitoring,pra-monitoring,re-monitoring'];
+        if ($request->type === 'pra-monitoring' || $request->type === 're-monitoring') {
             $rules['month'] = 'required|string';
         } else {
             $rules['periode_label'] = 'required|string';
@@ -444,7 +675,7 @@ class ReportController extends Controller
             ->where('type', $request->type)
             ->whereNotNull('submit_at');
 
-        if ($request->type === 'pra-monitoring') {
+        if ($request->type === 'pra-monitoring' || $request->type === 're-monitoring') {
             $month = $request->month; // YYYY-MM
             $query->whereYear('checkin_at', substr($month, 0, 4))
                   ->whereMonth('checkin_at', substr($month, 5, 2));
@@ -461,9 +692,11 @@ class ReportController extends Controller
         $tempDir = storage_path('app/temp-excel-' . now()->format('Ymd_His'));
         mkdir($tempDir, 0755, true);
 
-        $controller = $request->type === 'pra-monitoring'
-            ? app(PraMonitoringController::class)
-            : app(MonitoringController::class);
+        $controller = match ($request->type) {
+            'pra-monitoring' => app(PraMonitoringController::class),
+            're-monitoring' => app(ReMonitoringController::class),
+            default => app(MonitoringController::class),
+        };
 
         $generated = [];
         foreach ($reports as $report) {
@@ -481,7 +714,7 @@ class ReportController extends Controller
             return back()->with('error', 'Gagal membuat file Excel.');
         }
 
-        $label = $request->type === 'pra-monitoring' ? $request->month : $request->periode_label;
+        $label = $request->type === 'pra-monitoring' || $request->type === 're-monitoring' ? $request->month : $request->periode_label;
         $zipPath = storage_path("app/laporan-{$request->type}-{$label}-" . now()->format('Y-m-d_H-i') . '.zip');
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {

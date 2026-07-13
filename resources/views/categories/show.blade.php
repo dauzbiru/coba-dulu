@@ -12,7 +12,6 @@
 @section('content')
     <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-            <a href="/categories" class="text-sm text-blue-600 hover:underline">&larr; Kembali</a>
             <h2 class="text-lg sm:text-xl font-bold text-gray-800 mt-1">{{ $category->name }}</h2>
         </div>
         <div class="flex gap-2">
@@ -42,9 +41,9 @@
                                 @if($item->bobot) <span class="text-xs text-gray-400 font-normal">(bobot {{ $item->bobot }})</span> @endif
                             </h4>
                             <div class="flex gap-1 shrink-0">
-                                <a href="/items/{{ $item->id }}/edit" class="p-1 text-blue-600 hover:text-blue-800">
+                                <button onclick="openEditItemModal({{ $item->id }})" class="p-1 text-blue-600 hover:text-blue-800 cursor-pointer">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                                </a>
+                                </button>
                                 <button type="button" onclick="deleteItem({{ $item->id }}, '{{ $item->name }}')" class="p-1 text-red-500 hover:text-red-700">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -57,9 +56,8 @@
                                     <li class="text-sm text-gray-600">{{ $c->description }}</li>
                                 @endforeach
                             </ul>
-                            <a href="/items/{{ $item->id }}/criteria" class="text-xs text-gray-400 hover:text-blue-600">Edit opsi</a>
                         @else
-                            <p class="text-xs text-gray-400 italic mb-2">Belum ada opsi. <a href="/items/{{ $item->id }}/criteria" class="text-blue-600 hover:underline">Tambah opsi</a></p>
+                            <p class="text-xs text-gray-400 italic mb-2">Belum ada opsi.</p>
                         @endif
                     </div>
                 @endforeach
@@ -131,11 +129,53 @@
             @endif
         </div>
     </div>
+    {{-- Modal Edit Item --}}
+    <div id="editItemModal" class="fixed inset-0 bg-black/40 z-40 flex items-center justify-center hidden" onclick="if (event.target===this) closeEditItemModal()">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Edit Item</h3>
+            <form id="editItemForm" method="POST" action="">
+                @csrf @method('PUT')
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Item</label>
+                    <input id="edit_item_name" type="text" name="name" required class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Bobot</label>
+                    <input id="edit_item_bobot" type="number" step="0.01" name="bobot" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off">
+                </div>
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block text-sm font-medium text-gray-700">Opsi</label>
+                        <button type="button" onclick="editAddOpsi()" class="text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer">+ Opsi</button>
+                    </div>
+                    <div id="editOpsiList" class="space-y-1.5"></div>
+                    <div id="editInlineAdd" class="hidden mt-2 flex items-center gap-2">
+                        <input id="edit_opsi_input" type="text" placeholder="Tulis opsi..." autocomplete="off"
+                            class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();editSaveOpsi();}">
+                        <button type="button" onclick="editSaveOpsi()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+                        <button type="button" onclick="editCancelOpsi()" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
+                    </div>
+                </div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" onclick="closeEditItemModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script>
+var itemData = {!! json_encode($items->map(fn($i) => [
+    'id' => $i->id,
+    'name' => $i->name,
+    'bobot' => $i->bobot,
+    'criteria' => $i->criteria->map(fn($c) => ['id' => $c->id, 'description' => $c->description]),
+])) !!};
+var editOpsiItemId = null;
 var sortable = new Sortable(document.getElementById('sortable-items'), {
     handle: '.drag-handle',
     animation: 200,
@@ -188,6 +228,205 @@ function openBobotModal() {
 
 function closeBobotModal() {
     document.getElementById('bobotModal').classList.add('hidden');
+}
+
+function openEditItemModal(id) {
+    var i = itemData.find(function(x) { return x.id === id; });
+    if (!i) return;
+    editOpsiItemId = id;
+    document.getElementById('editItemForm').action = '/items/' + id;
+    document.getElementById('edit_item_name').value = i.name;
+    document.getElementById('edit_item_bobot').value = i.bobot;
+    renderEditOpsi(i.criteria);
+    document.getElementById('editItemModal').classList.remove('hidden');
+}
+function closeEditItemModal() {
+    document.getElementById('editItemModal').classList.add('hidden');
+    editCancelOpsi();
+}
+
+var editOpsiSortable = null;
+
+function renderEditOpsi(criteria) {
+    var container = document.getElementById('editOpsiList');
+    container.innerHTML = '';
+    if (!criteria || criteria.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-400 italic">Belum ada opsi.</p>';
+        return;
+    }
+    criteria.forEach(function(c, i) {
+        var row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 py-1';
+        row.dataset.cid = c.id;
+        row.innerHTML =
+            '<div class="flex items-center gap-2 flex-1 min-w-0">' +
+                '<span class="drag-handle cursor-grab text-gray-300 hover:text-gray-500 shrink-0">' +
+                    '<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 6h2v2H8V6zm6 0h2v2h-2V6zM8 11h2v2H8v-2zm6 0h2v2h-2v-2zm-6 5h2v2H8v-2zm6 0h2v2h-2v-2z"/></svg>' +
+                '</span>' +
+                '<span class="text-xs text-gray-400 w-4 shrink-0">' + (i + 1) + '.</span>' +
+                '<span class="text-sm text-gray-700 truncate">' + c.description + '</span>' +
+            '</div>' +
+            '<div class="flex gap-1 shrink-0">' +
+                '<button type="button" onclick="editInlineOpsi(this)" class="text-blue-600 hover:text-blue-800 cursor-pointer p-0.5">' +
+                    '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' +
+                '</button>' +
+                '<button type="button" onclick="editDeleteOpsi(this)" class="text-red-500 hover:text-red-700 cursor-pointer p-0.5">' +
+                    '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                '</button>' +
+            '</div>';
+        container.appendChild(row);
+    });
+    if (editOpsiSortable) editOpsiSortable.destroy();
+    editOpsiSortable = new Sortable(container, {
+        handle: '.drag-handle',
+        animation: 150,
+        onEnd: function() {
+            var ids = [];
+            container.querySelectorAll('[data-cid]').forEach(function(el) {
+                ids.push(el.dataset.cid);
+            });
+            ids.forEach(function(id, idx) {
+                var row = container.querySelector('[data-cid="' + id + '"]');
+                if (row) row.querySelector('.w-4').textContent = (idx + 1) + '.';
+            });
+            var formData = new FormData();
+            formData.append('_method', 'PUT');
+            ids.forEach(function(id) {
+                formData.append('items[]', id);
+            });
+            fetch('/items/' + editOpsiItemId + '/criteria/reorder', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                body: formData
+            });
+        }
+    });
+}
+
+function editInlineOpsi(btn) {
+    var row = btn.closest('[data-cid]');
+    var cid = row.dataset.cid;
+    var span = row.querySelector('.truncate');
+    var currentVal = span.textContent;
+    span.innerHTML = '<input type="text" value="' + currentVal.replace(/"/g, '&quot;') + '" class="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">';
+    var input = span.querySelector('input');
+    input.focus();
+    var actionsDiv = row.querySelector('.flex.gap-1');
+    actionsDiv.innerHTML =
+        '<button type="button" onclick="editSaveInlineOpsi(this)" class="text-green-600 hover:text-green-800 cursor-pointer text-xs font-medium px-1">Simpan</button>' +
+        '<button type="button" onclick="editCancelInlineOpsi(this)" class="text-gray-500 hover:text-gray-700 cursor-pointer text-xs font-medium px-1">Batal</button>';
+}
+
+function editSaveInlineOpsi(btn) {
+    var row = btn.closest('[data-cid]');
+    var cid = row.dataset.cid;
+    var input = row.querySelector('input');
+    var val = input.value.trim();
+    if (!val) return;
+
+    var formData = new FormData();
+    formData.append('_method', 'PUT');
+    formData.append('description', val);
+
+    fetch('/items/' + editOpsiItemId + '/criteria/' + cid, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    }).then(function(r) { return r.json(); }).then(function(resp) {
+        if (resp.success) {
+            row.querySelector('.truncate').textContent = val;
+            var actionsDiv = row.querySelector('.flex.gap-1');
+            actionsDiv.innerHTML =
+                '<button type="button" onclick="editInlineOpsi(this)" class="text-blue-600 hover:text-blue-800 cursor-pointer p-0.5">' +
+                    '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' +
+                '</button>' +
+                '<button type="button" onclick="editDeleteOpsi(this)" class="text-red-500 hover:text-red-700 cursor-pointer p-0.5">' +
+                    '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+                '</button>';
+            var item = itemData.find(function(x) { return x.id === editOpsiItemId; });
+            if (item) {
+                var c = item.criteria.find(function(x) { return x.id == cid; });
+                if (c) c.description = val;
+            }
+        }
+    });
+}
+
+function editCancelInlineOpsi(btn) {
+    var row = btn.closest('[data-cid]');
+    var cid = row.dataset.cid;
+    var item = itemData.find(function(x) { return x.id === editOpsiItemId; });
+    var c = item ? item.criteria.find(function(x) { return x.id == cid; }) : null;
+    var original = c ? c.description : '';
+    row.querySelector('.truncate').textContent = original;
+    var actionsDiv = row.querySelector('.flex.gap-1');
+    actionsDiv.innerHTML =
+        '<button type="button" onclick="editInlineOpsi(this)" class="text-blue-600 hover:text-blue-800 cursor-pointer p-0.5">' +
+            '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' +
+        '</button>' +
+        '<button type="button" onclick="editDeleteOpsi(this)" class="text-red-500 hover:text-red-700 cursor-pointer p-0.5">' +
+            '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>' +
+        '</button>';
+}
+
+function editDeleteOpsi(btn) {
+    var row = btn.closest('[data-cid]');
+    var cid = row.dataset.cid;
+    if (!confirm('Hapus opsi ini?')) return;
+
+    var formData = new FormData();
+    formData.append('_method', 'DELETE');
+
+    fetch('/items/' + editOpsiItemId + '/criteria/' + cid, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    }).then(function(r) { return r.json(); }).then(function(resp) {
+        if (resp.success) {
+            row.remove();
+            var item = itemData.find(function(x) { return x.id === editOpsiItemId; });
+            if (item) {
+                item.criteria = item.criteria.filter(function(x) { return x.id != cid; });
+            }
+            var container = document.getElementById('editOpsiList');
+            if (!container.children.length) {
+                container.innerHTML = '<p class="text-xs text-gray-400 italic">Belum ada opsi.</p>';
+            }
+        }
+    });
+}
+
+function editAddOpsi() {
+    document.getElementById('editInlineAdd').classList.remove('hidden');
+    document.getElementById('edit_opsi_input').focus();
+}
+function editCancelOpsi() {
+    document.getElementById('editInlineAdd').classList.add('hidden');
+    document.getElementById('edit_opsi_input').value = '';
+}
+function editSaveOpsi() {
+    var input = document.getElementById('edit_opsi_input');
+    var val = input.value.trim();
+    if (!val) return;
+
+    var formData = new FormData();
+    formData.append('description', val);
+
+    fetch('/items/' + editOpsiItemId + '/criteria', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    }).then(function(r) { return r.json(); }).then(function(resp) {
+        if (resp.success && resp.criterion) {
+            var item = itemData.find(function(x) { return x.id === editOpsiItemId; });
+            if (item) {
+                item.criteria.push({ id: resp.criterion.id, description: resp.criterion.description });
+            }
+            renderEditOpsi(item ? item.criteria : []);
+            input.value = '';
+            editCancelOpsi();
+        }
+    });
 }
 </script>
 @endpush

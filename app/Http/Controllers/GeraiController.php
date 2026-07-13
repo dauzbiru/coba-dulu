@@ -24,13 +24,16 @@ class GeraiController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'kode_gerai' => 'required|string|max:50|unique:gerais,kode_gerai',
+            'kode_gerai' => 'required|string|max:50|unique:gerais,kode_gerai,NULL,id,is_active,1',
             'nama_gerai' => 'required|string|max:255',
             'franchisee' => 'required|string|max:255',
+            'alamat' => 'nullable|string',
+            'email' => 'nullable|email|max:255',
+            'no_telepon' => 'nullable|string|max:20',
             'opening_at' => 'nullable|date',
         ]);
 
-        Gerai::create($data);
+        Gerai::create(['is_active' => true] + $data);
 
         return redirect('/gerais')->with('success', 'Gerai berhasil ditambahkan.');
     }
@@ -48,9 +51,12 @@ class GeraiController extends Controller
     public function update(Request $request, Gerai $gerai)
     {
         $data = $request->validate([
-            'kode_gerai' => 'required|string|max:50|unique:gerais,kode_gerai,' . $gerai->id,
+            'kode_gerai' => 'required|string|max:50|unique:gerais,kode_gerai,' . $gerai->id . ',id,is_active,1',
             'nama_gerai' => 'required|string|max:255',
             'franchisee' => 'required|string|max:255',
+            'alamat' => 'nullable|string',
+            'email' => 'nullable|email|max:255',
+            'no_telepon' => 'nullable|string|max:20',
             'opening_at' => 'nullable|date',
         ]);
 
@@ -64,6 +70,32 @@ class GeraiController extends Controller
         $gerai->delete();
 
         return redirect('/gerais')->with('success', 'Gerai berhasil dihapus.');
+    }
+
+    public function tutup(Gerai $gerai)
+    {
+        $gerai->update([
+            'is_active' => false,
+            'closed_at' => now(),
+        ]);
+
+        return redirect('/gerais')->with('success', 'Gerai berhasil ditutup.');
+    }
+
+    public function buka(Gerai $gerai)
+    {
+        $duplicate = Gerai::active()->where('kode_gerai', $gerai->kode_gerai)->where('id', '!=', $gerai->id)->exists();
+
+        if ($duplicate) {
+            return redirect('/gerais')->with('error', 'Gagal membuka: sudah ada gerai aktif dengan kode ' . $gerai->kode_gerai . '. Nonaktifkan dulu yang lain.');
+        }
+
+        $gerai->update([
+            'is_active' => true,
+            'closed_at' => null,
+        ]);
+
+        return redirect('/gerais')->with('success', 'Gerai berhasil dibuka kembali.');
     }
 
     public function importForm()
@@ -90,17 +122,21 @@ class GeraiController extends Controller
                 $getCell = function ($cells, $idx) {
                     $val = isset($cells[$idx]) ? $cells[$idx]->getValue() : '';
                     if ($val instanceof \DateTimeInterface) return $val->format('d-m-Y');
+                    if (is_numeric($val)) return (string) $val;
                     return is_string($val) ? $val : '';
                 };
                 $kode = trim($getCell($row->cells, 0));
                 $nama = trim($getCell($row->cells, 1));
                 $franchisee = trim($getCell($row->cells, 2));
-                $openingRaw = trim($getCell($row->cells, 3));
+                $alamat = trim($getCell($row->cells, 3));
+                $email = trim($getCell($row->cells, 4));
+                $noTelepon = trim($getCell($row->cells, 5));
+                $openingRaw = trim($getCell($row->cells, 6));
 
                 if (empty($kode) && empty($nama)) continue;
                 if (empty($kode)) continue;
 
-                $data = ['nama_gerai' => $nama, 'franchisee' => $franchisee];
+                $data = ['nama_gerai' => $nama, 'franchisee' => $franchisee, 'alamat' => $alamat, 'email' => $email, 'no_telepon' => $noTelepon];
                 if (!empty($openingRaw)) {
                     try {
                         $data['opening_at'] = \Carbon\Carbon::createFromFormat('d-m-Y', $openingRaw)->format('Y-m-d');
@@ -113,10 +149,12 @@ class GeraiController extends Controller
                     }
                 }
 
-                Gerai::updateOrCreate(
-                    ['kode_gerai' => $kode],
-                    $data
-                );
+                $gerai = Gerai::where('kode_gerai', $kode)->where('is_active', true)->first();
+                if ($gerai) {
+                    $gerai->update($data);
+                } else {
+                    Gerai::create(array_merge($data, ['kode_gerai' => $kode, 'is_active' => true]));
+                }
                 $count++;
             }
         }
@@ -133,11 +171,11 @@ class GeraiController extends Controller
 
         $writer->openToFile($filename);
 
-        $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Franchisee', 'Opening']));
+        $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Franchisee', 'Alamat', 'Email', 'No Telepon', 'Opening']));
 
         $gerais = Gerai::orderBy('kode_gerai')->get();
         foreach ($gerais as $g) {
-            $writer->addRow(Row::fromValues([$g->kode_gerai, $g->nama_gerai, $g->franchisee, $g->opening_at?->format('d-m-Y')]));
+            $writer->addRow(Row::fromValues([$g->kode_gerai, $g->nama_gerai, $g->franchisee, $g->alamat, $g->email, $g->no_telepon, $g->opening_at?->format('d-m-Y')]));
         }
 
         $writer->close();
@@ -152,8 +190,8 @@ class GeraiController extends Controller
 
         $writer->openToFile($filename);
 
-        $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Franchisee', 'Opening']));
-        $writer->addRow(Row::fromValues(['GR001', 'Gerai Contoh 1', 'Franchisee A', '15-01-2024']));
+        $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Franchisee', 'Alamat', 'Email', 'No Telepon', 'Opening']));
+        $writer->addRow(Row::fromValues(['GR001', 'Gerai Contoh 1', 'Franchisee A', 'Jl. Contoh No. 1', 'gerai1@email.com', '081234567890', '15-01-2024']));
         $writer->addRow(Row::fromValues(['GR002', 'Gerai Contoh 2', 'Franchisee B', '01-06-2024']));
 
         $writer->close();

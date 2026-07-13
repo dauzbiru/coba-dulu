@@ -9,7 +9,6 @@
 @section('content')
 <div class="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-        <a href="/{{ $prefix }}" class="text-sm text-blue-600 hover:underline">&larr; Kembali</a>
         <h2 class="text-base sm:text-lg font-semibold text-gray-800 mt-1">Checkin Gerai</h2>
     </div>
 
@@ -77,6 +76,24 @@
         </form>
     </div>
 </div>
+
+<div id="existingPopup" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" style="display:none" onclick="closePopup()">
+    <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6" onclick="event.stopPropagation()">
+        <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center shrink-0">
+                <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+                <h3 class="text-base font-semibold text-gray-800">Data Sudah Ada</h3>
+                <p class="text-sm text-gray-500">{{ $gerai->kode_gerai }} - {{ $gerai->nama_gerai }}</p>
+            </div>
+        </div>
+        <p class="text-sm text-gray-700 mb-4" id="popupMessage"></p>
+        <button onclick="closePopup()" class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+            Kembali
+        </button>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -127,7 +144,7 @@
                 status.textContent = 'Mengonversi ke alamat...';
 
                 fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=id', {
-                    headers: { 'User-Agent': 'Monapps/1.0' }
+                    headers: { 'User-Agent': 'MARS/1.0' }
                 })
                     .then(function(res) { return res.json(); })
                     .then(function(data) {
@@ -168,6 +185,21 @@
 
     detectLocation();
     document.getElementById('refreshLocation').addEventListener('click', detectLocation);
+
+    var existingPeriods = @json(isset($existingPeriods) ? $existingPeriods : []);
+    var form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        var sel = document.getElementById('periode_label');
+        if (sel && existingPeriods.indexOf(sel.value) !== -1) {
+            e.preventDefault();
+            document.getElementById('popupMessage').textContent = 'Laporan atau nilai untuk gerai ini sudah ada di periode ' + sel.value + '. Silahkan pilih periode lain.';
+            document.getElementById('existingPopup').style.display = 'flex';
+        }
+    });
 })();
+
+function closePopup() {
+    document.getElementById('existingPopup').style.display = 'none';
+}
 </script>
 @endpush

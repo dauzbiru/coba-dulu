@@ -23,10 +23,15 @@ class CriterionController extends Controller
     {
         $request->validate(['description' => 'required|string|max:255']);
         $sort = $item->criteria()->max('sort') + 1;
-        $item->criteria()->create([
+        $criterion = $item->criteria()->create([
             'description' => $request->description,
             'sort' => $sort,
         ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'criterion' => ['id' => $criterion->id, 'description' => $criterion->description]]);
+        }
+
         return redirect("/categories/{$item->category_id}")->with('success', 'Opsi berhasil ditambahkan.');
     }
 
@@ -39,12 +44,22 @@ class CriterionController extends Controller
     {
         $request->validate(['description' => 'required|string|max:255']);
         $criterion->update(['description' => $request->description]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'criterion' => ['id' => $criterion->id, 'description' => $criterion->description]]);
+        }
+
         return redirect("/categories/{$item->category_id}")->with('success', 'Opsi berhasil diubah.');
     }
 
-    public function destroy(Item $item, Criterion $criterion)
+    public function destroy(Request $request, Item $item, Criterion $criterion)
     {
         $criterion->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
         return redirect("/categories/{$item->category_id}")->with('success', 'Opsi berhasil dihapus.');
     }
 

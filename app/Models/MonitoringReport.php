@@ -6,13 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 
 class MonitoringReport extends Model
 {
-    protected $fillable = ['gerai_id', 'user_id', 'type', 'location', 'nilai', 'grade', 'periode_start', 'periode_end', 'periode_label', 'checkin_at', 'submit_at'];
+    protected $fillable = ['gerai_id', 'user_id', 'type', 'location', 'nilai', 'grade', 'periode_label', 'checkin_at', 'submit_at'];
 
     protected $casts = [
         'checkin_at' => 'datetime',
         'submit_at' => 'datetime',
-        'periode_start' => 'date',
-        'periode_end' => 'date',
     ];
 
     public static function gradeFromScore(float $score): string

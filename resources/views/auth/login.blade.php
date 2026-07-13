@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Monapps</title>
+    <title>Login - MARS</title>
+    <link rel="icon" type="image/png" href="/images/biru-favicon.png?v=5">
+    <link rel="shortcut icon" href="/favicon.ico?v=5">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-white rounded-xl shadow-md p-6 sm:p-8">
+        <img src="/images/logo.png" alt="MARS" class="h-12 w-auto mx-auto mb-4">
         <h1 class="text-xl sm:text-2xl font-bold text-gray-800 mb-6 text-center">Login</h1>
 
         <form method="POST" action="/login">

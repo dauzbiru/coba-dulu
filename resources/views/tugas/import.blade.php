@@ -1,11 +1,10 @@
 @extends('layouts.admin')
 
-@section('title', 'Import ' . $title . ' - Monapps')
+@section('title', 'Import ' . $title . ' - MARS')
 
 @section('content')
 <div class="max-w-lg mx-auto bg-white rounded-xl shadow-md overflow-hidden">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200">
-        <a href="/tugas/penjelasan-formulir-{{ $formulir }}" class="text-sm text-blue-600 hover:underline">&larr; Kembali ke {{ $title }}</a>
         <h2 class="text-base sm:text-lg font-semibold text-gray-800 mt-1">Import Excel</h2>
         <p class="text-xs text-gray-500 mt-1">Upload file Excel dengan kolom <strong>Kondisi</strong> dan <strong>Penjelasan</strong>.</p>
     </div>

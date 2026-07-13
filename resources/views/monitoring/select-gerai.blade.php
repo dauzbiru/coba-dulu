@@ -5,8 +5,17 @@
 @section('content')
 <div class="bg-white rounded-xl shadow-md overflow-hidden">
     <div class="sticky top-0 bg-white z-10 px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-        <h2 class="text-base sm:text-lg font-semibold text-gray-800">Buat {{ $prefix === 'pra-monitoring' ? 'Pra-Monitoring' : 'Monitoring' }}</h2>
-        <input type="text" id="searchGerai" placeholder="Cari gerai..." class="w-full sm:w-64 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" autocomplete="off" oninput="filterGerai(this.value)">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-800">Buat {{ $prefix === 'pra-monitoring' ? 'Pra-Monitoring' : ($prefix === 're-monitoring' ? 'Re-Monitoring' : 'Monitoring') }}</h2>
+        <div class="relative flex items-center">
+            <input type="text" id="searchGerai" placeholder="Cari gerai..."
+                class="w-0 sm:w-0 px-0 py-2 border-0 text-sm focus:outline-none transition-all duration-200 ease-in-out"
+                autocomplete="off" oninput="filterGerai(this.value)">
+            <button type="button" onclick="toggleSearch('searchGerai', this)" class="shrink-0 p-2 text-gray-500 hover:text-gray-700">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </button>
+        </div>
     </div>
 
     <div class="max-h-[calc(100vh-200px)] overflow-auto">

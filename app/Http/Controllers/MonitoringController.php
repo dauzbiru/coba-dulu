@@ -11,6 +11,7 @@ use App\Models\PenjelasanFormulir;
 use App\Models\SemesterPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use ZipArchive;
@@ -24,7 +25,11 @@ class MonitoringController extends Controller
 
     protected function prefix()
     {
-        return $this->type === 'pra-monitoring' ? 'pra-monitoring' : 'monitoring';
+        return match ($this->type) {
+            'pra-monitoring' => 'pra-monitoring',
+            're-monitoring' => 're-monitoring',
+            default => 'monitoring',
+        };
     }
 
     public function selectGerai()
@@ -35,7 +40,7 @@ class MonitoringController extends Controller
                 ->with('warning', 'Anda masih memiliki laporan yang belum diselesaikan. Selesaikan dulu.');
         }
 
-        $gerais = Gerai::orderBy('kode_gerai')->get();
+        $gerais = Gerai::active()->orderBy('kode_gerai')->get();
 
         $todayReportGeraiIds = MonitoringReport::where('user_id', Auth::id())
             ->where('type', $this->type)
@@ -56,7 +61,21 @@ class MonitoringController extends Controller
 
         $periods = SemesterPeriod::where('year', now()->year)->orderBy('start_month')->get();
 
-        return view('monitoring.checkin', compact('gerai', 'periods') + ['prefix' => $this->prefix()]);
+        $existingPeriods = MonitoringReport::where('gerai_id', $gerai->id)
+            ->where(function ($q) {
+                $q->where('type', 'import')
+                    ->orWhere(function ($q2) {
+                        $q2->where('type', $this->type)
+                            ->whereNotNull('submit_at');
+                    });
+            })
+            ->whereNotNull('periode_label')
+            ->pluck('periode_label')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        return view('monitoring.checkin', compact('gerai', 'periods', 'existingPeriods') + ['prefix' => $this->prefix()]);
     }
 
     public function doCheckin(Request $request, Gerai $gerai)
@@ -67,43 +86,81 @@ class MonitoringController extends Controller
                 ->with('warning', 'Anda masih memiliki laporan yang belum diselesaikan.');
         }
 
-        $existing = MonitoringReport::where('gerai_id', $gerai->id)
-            ->where('user_id', Auth::id())
-            ->where('type', $this->type)
-            ->whereDate('checkin_at', now()->toDateString())
-            ->exists();
-
-        if ($existing) {
-            return redirect("/{$this->prefix()}")->with('warning', 'Laporan untuk gerai ini sudah dibuat hari ini.');
-        }
-
         $data = $request->validate([
             'location' => 'required|string|max:255',
             'periode_label' => 'required|string|max:100',
             'checkin_at' => 'required|date',
         ]);
 
-        $report = MonitoringReport::create([
-            'gerai_id' => $gerai->id,
-            'user_id' => Auth::id(),
-            'type' => $this->type,
-            'location' => $data['location'],
-            'periode_label' => $data['periode_label'],
-            'checkin_at' => \Carbon\Carbon::parse($data['checkin_at'] . ' ' . now()->format('H:i:s')),
-        ]);
+        $hasData = MonitoringReport::where('gerai_id', $gerai->id)
+            ->where('periode_label', $data['periode_label'])
+            ->where(function ($q) {
+                $q->where('type', 'import')
+                    ->orWhere(function ($q2) {
+                        $q2->where('type', $this->type)
+                            ->whereNotNull('submit_at');
+                    });
+            })
+            ->exists();
 
-        $categories = Category::whereNull('parent_id')->with('items.criteria')->get();
-        foreach ($categories as $cat) {
-            foreach ($cat->items as $item) {
-                if ($item->criteria->isNotEmpty()) {
-                    Result::create([
-                        'item_id' => $item->id,
-                        'user_id' => Auth::id(),
-                        'monitoring_report_id' => $report->id,
-                        'criterion_id' => $item->criteria->first()->id,
-                    ]);
+        if ($hasData) {
+            return redirect("/{$this->prefix()}/checkin/{$gerai->id}")
+                ->with('error', 'Laporan atau nilai untuk gerai ini sudah ada di periode ' . $data['periode_label'] . '. Silahkan pilih periode lain.');
+        }
+
+        $report = DB::transaction(function () use ($gerai, $data) {
+            $duplicate = MonitoringReport::where('gerai_id', $gerai->id)
+                ->where('type', $this->type)
+                ->where('periode_label', $data['periode_label'])
+                ->whereNotNull('submit_at')
+                ->exists();
+
+            if ($duplicate) {
+                return null;
+            }
+
+            $existing = MonitoringReport::where('gerai_id', $gerai->id)
+                ->where('user_id', Auth::id())
+                ->where('type', $this->type)
+                ->whereDate('checkin_at', now()->toDateString())
+                ->exists();
+
+            if ($existing) {
+                return 'existing';
+            }
+
+            $report = MonitoringReport::create([
+                'gerai_id' => $gerai->id,
+                'user_id' => Auth::id(),
+                'type' => $this->type,
+                'location' => $data['location'],
+                'periode_label' => $data['periode_label'],
+                'checkin_at' => \Carbon\Carbon::parse($data['checkin_at'] . ' ' . now()->format('H:i:s')),
+            ]);
+
+            $categories = Category::whereNull('parent_id')->with('items.criteria')->get();
+            foreach ($categories as $cat) {
+                foreach ($cat->items as $item) {
+                    if ($item->criteria->isNotEmpty()) {
+                        Result::create([
+                            'item_id' => $item->id,
+                            'user_id' => Auth::id(),
+                            'monitoring_report_id' => $report->id,
+                            'criterion_id' => $item->criteria->first()->id,
+                        ]);
+                    }
                 }
             }
+
+            return $report;
+        });
+
+        if ($report === null) {
+            return redirect("/{$this->prefix()}")->with('warning', 'Nilai untuk gerai dan periode ini sudah ada. Hapus data yang ada terlebih dahulu jika ingin mengganti.');
+        }
+
+        if ($report === 'existing') {
+            return redirect("/{$this->prefix()}")->with('warning', 'Laporan untuk gerai ini sudah dibuat hari ini.');
         }
 
         return redirect("/{$this->prefix()}/{$report->id}/assessment");
@@ -111,6 +168,7 @@ class MonitoringController extends Controller
 
     public function assessment(MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $categories = Category::whereNull('parent_id')
             ->with('items.criteria')
@@ -185,12 +243,29 @@ class MonitoringController extends Controller
             }
 
             // check penjelasan formulir 3
-            if (!empty($finding->penjelasan_isi_3) && is_array($finding->penjelasan_isi_3)) {
-                foreach ($finding->penjelasan_isi_3 as $val) {
-                    if (empty(trim($val))) {
-                        $incomplete[] = 'Penjelasan Formulir 3';
+            $allItems = \App\Models\Item::with('criteria')->get();
+            $zeroScoreItemIds = [];
+            foreach ($allItems as $item) {
+                if (!$item->bobot || $item->criteria->count() <= 1) continue;
+                $result = $results->get($item->id);
+                if (!$result || !$result->criterion_id) continue;
+                $criteria = $item->criteria->sortBy('sort')->values();
+                $idx = $criteria->search(fn($c) => $c->id === $result->criterion_id);
+                if ($idx === $criteria->count() - 1) {
+                    $zeroScoreItemIds[] = $item->id;
+                }
+            }
+            if (!empty($zeroScoreItemIds)) {
+                $penjelasan3 = $finding->penjelasan_isi_3 ?? [];
+                $allFilled = true;
+                foreach ($zeroScoreItemIds as $itemId) {
+                    if (empty($penjelasan3[$itemId]) || empty(trim($penjelasan3[$itemId]))) {
+                        $allFilled = false;
                         break;
                     }
+                }
+                if (!$allFilled) {
+                    $incomplete[] = 'Penjelasan Formulir 3';
                 }
             }
         }
@@ -214,6 +289,8 @@ class MonitoringController extends Controller
 
     public function cancelAssessment(Request $request, MonitoringReport $report)
     {
+        $this->authorizeReport($report);
+
         $snapshotKey = 'assessment_snapshot_' . $report->id;
         $snapshot = session()->get($snapshotKey);
 
@@ -262,6 +339,7 @@ class MonitoringController extends Controller
 
     public function assessmentForm(MonitoringReport $report, Category $category)
     {
+        $this->authorizeReport($report);
 
         $category->load('items.criteria');
 
@@ -275,6 +353,7 @@ class MonitoringController extends Controller
 
     public function saveAssessmentForm(Request $request, MonitoringReport $report, Category $category)
     {
+        $this->authorizeReport($report);
 
         $category->load('items.criteria');
 
@@ -297,6 +376,7 @@ class MonitoringController extends Controller
 
     public function temuanForm(MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $finding = $report->finding;
 
@@ -376,6 +456,7 @@ class MonitoringController extends Controller
 
     public function saveTemuan(Request $request, MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $data = $request->validate([
             'major' => 'nullable|string',
@@ -398,8 +479,12 @@ class MonitoringController extends Controller
             'penjelasan_isi_3.*' => 'nullable|string|max:5000',
         ]);
 
-        $data['penjelasan_isi'] = $request->penjelasan_isi ?? [];
-        $data['penjelasan_isi_3'] = $request->penjelasan_isi_3 ?? [];
+        if ($request->has('penjelasan_isi')) {
+            $data['penjelasan_isi'] = $request->penjelasan_isi;
+        }
+        if ($request->has('penjelasan_isi_3')) {
+            $data['penjelasan_isi_3'] = $request->penjelasan_isi_3;
+        }
 
         if ($request->hasFile('ttd_petugas')) {
             $data['ttd_petugas'] = $request->file('ttd_petugas')->store('ttd', 'public');
@@ -437,6 +522,7 @@ class MonitoringController extends Controller
 
     public function submit(Request $request, MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $savedResults = Result::where('monitoring_report_id', $report->id)
             ->where('user_id', Auth::id())
@@ -502,12 +588,33 @@ class MonitoringController extends Controller
                 }
             }
 
-            if (!empty($finding->penjelasan_isi_3) && is_array($finding->penjelasan_isi_3)) {
-                foreach ($finding->penjelasan_isi_3 as $val) {
-                    if (empty(trim($val))) {
-                        $incomplete[] = 'Penjelasan Formulir 3';
+            $results = Result::where('monitoring_report_id', $report->id)
+                ->whereNotNull('criterion_id')
+                ->get()
+                ->keyBy('item_id');
+            $allItems = \App\Models\Item::with('criteria')->get();
+            $zeroScoreItemIds = [];
+            foreach ($allItems as $item) {
+                if (!$item->bobot || $item->criteria->count() <= 1) continue;
+                $result = $results->get($item->id);
+                if (!$result || !$result->criterion_id) continue;
+                $criteria = $item->criteria->sortBy('sort')->values();
+                $idx = $criteria->search(fn($c) => $c->id === $result->criterion_id);
+                if ($idx === $criteria->count() - 1) {
+                    $zeroScoreItemIds[] = $item->id;
+                }
+            }
+            if (!empty($zeroScoreItemIds)) {
+                $penjelasan3 = $finding->penjelasan_isi_3 ?? [];
+                $missing = false;
+                foreach ($zeroScoreItemIds as $itemId) {
+                    if (empty($penjelasan3[$itemId]) || empty(trim($penjelasan3[$itemId]))) {
+                        $missing = true;
                         break;
                     }
+                }
+                if ($missing) {
+                    $incomplete[] = 'Penjelasan Formulir 3';
                 }
             }
         }
@@ -546,6 +653,7 @@ class MonitoringController extends Controller
 
     public function show(MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $categories = Category::whereNull('parent_id')
             ->with('items.criteria')
@@ -582,11 +690,16 @@ class MonitoringController extends Controller
             return $cat;
         })->filter(fn($cat) => $cat->items->isNotEmpty())->values();
 
-        return view('monitoring.show', compact('report', 'filteredCategories', 'results', 'totalScore') + ['prefix' => $this->prefix()]);
+        return view('monitoring.show', compact('report', 'filteredCategories', 'results', 'totalScore') + [
+            'prefix' => $this->prefix(),
+            'allGerais' => \App\Models\Gerai::active()->get(['id', 'kode_gerai', 'nama_gerai', 'franchisee', 'no_telepon']),
+            'allPgs' => \App\Models\Pg::orderBy('nama_pg')->get(['id', 'nama_pg', 'kota', 'no_telepon']),
+        ]);
     }
 
     public function pdf(MonitoringReport $report)
     {
+        $this->authorizeReport($report);
 
         $categories = Category::whereNull('parent_id')
             ->with('items.criteria')
@@ -690,9 +803,12 @@ class MonitoringController extends Controller
 
     public function excel(MonitoringReport $report, $outputDir = null)
     {
+        $this->authorizeReport($report);
+
         set_time_limit(120);
 
-        $templateFile = 'excel-template-' . $this->type . '.xlsx';
+        $templateType = $this->type === 're-monitoring' ? 'monitoring' : $this->type;
+        $templateFile = 'excel-template-' . $templateType . '.xlsx';
 
         if (!Storage::exists($templateFile)) {
             return back()->with('error', 'Upload template Excel terlebih dahulu di menu Template Excel.');
@@ -808,7 +924,7 @@ class MonitoringController extends Controller
             '{checkin}'          => $report->checkin_at->setTimezone($tz)->format('d-m-Y H:i:s'),
             '{submit}'           => $report->submit_at ? $report->submit_at->setTimezone($tz)->format('d-m-Y H:i:s') : '-',
             '{petugas}'          => $report->user?->name ?? '-',
-            '{periode}'          => strtoupper($report->periode_label ?? '-'),
+            '{periode}'          => strtoupper($report->periode_label ?? $report->checkin_at->setTimezone($tz)->locale('id')->isoFormat('MMMM YYYY') ?? '-'),
             '{total_score}'      => str_replace('.', ',', (string) $totalScore),
             '{minor}'            => $finding?->minor ?? '-',
             '{mayor}'            => $finding?->major ?? '-',
@@ -1531,9 +1647,9 @@ class MonitoringController extends Controller
                         foreach ($paLines as $line) {
                             if (trim($line) !== '') $infoRows[] = $makeBRow($line);
                         }
-                        $infoRows[] = $makeBRow('');
                         $noteContent = $finding?->note ?? '';
                         if ($noteContent !== '') {
+                            $infoRows[] = $makeBRow('');
                             $infoRows[] = $makeBRow('Note:');
                             foreach (preg_split('/\r?\n/', $noteContent) as $line) {
                                 if (trim($line) !== '') $infoRows[] = $makeBRow(trim($line));
@@ -1821,11 +1937,11 @@ class MonitoringController extends Controller
 
                     $sections = [
                         ['name' => 'Karyawan & Pimpinan Gerai', 'groups' => [
-                            ['name' => 'Pelayanan', 'category_ids' => [1, 2, 3, 4]],
+                            ['name' => 'Pelayanan', 'category_ids' => [2, 3, 4]],
                             ['name' => 'Penampilan & Tingkah Laku Karyawan', 'category_ids' => [6, 7, 8]],
                         ], 'category_ids' => [5, 9]],
                         ['name' => 'Tampilan Gerai', 'category_ids' => [10, 11, 12, 13, 14]],
-                        ['name' => 'Produk Operasional', 'category_ids' => [15, 16, 17, 19, 18]],
+                        ['name' => 'Produk Operasional', 'category_ids' => [15, 16, 17, 19, 18, 20]],
                     ];
 
                     $hierarchyValues = []; // [['avg'=>..., 'min'=>...], ...]
@@ -2150,6 +2266,48 @@ class MonitoringController extends Controller
                 $cell->appendChild($v);
             }
 
+            // --- Re-Monitoring: add current report data column after last period ---
+            if ($this->type === 're-monitoring' && !empty($filledCols)) {
+                $reColIdx = array_search(end($filledCols), $columns, true);
+                if ($reColIdx !== false && $reColIdx < 8) {
+                    $reCol = $columns[$reColIdx + 1];
+                    $reDate = $report->checkin_at->setTimezone($tz)->format('d-M-y');
+                    $reScore = is_numeric($report->nilai) ? round((float) $report->nilai) : round($totalScore);
+                    $rePrevScore = $prevTotalScore !== null ? round($prevTotalScore) : null;
+
+                    $reData = [1 => $reDate, 2 => (string) $reScore, 3 => '975'];
+                    if ($rePrevScore !== null) {
+                        $reData[4] = (string) $rePrevScore;
+                    }
+
+                    foreach ($reData as $rowNum => $cellValue) {
+                        $ref = $reCol . $rowNum;
+                        $cells = $xpath4->query("//s:c[@r='$ref']");
+                        if ($cells->length === 0) continue;
+                        $cell = $cells->item(0);
+                        foreach (['v', 'is', 'f'] as $tag) {
+                            $existing = $cell->getElementsByTagNameNS($ns4, $tag)->item(0);
+                            if ($existing) $cell->removeChild($existing);
+                        }
+                        if ($rowNum === 1) {
+                            $cell->setAttribute('t', 'inlineStr');
+                            $is = $dom4->createElementNS($ns4, 'is');
+                            $t = $dom4->createElementNS($ns4, 't');
+                            $t->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
+                            $t->textContent = $cellValue;
+                            $is->appendChild($t);
+                            $cell->appendChild($is);
+                        } else {
+                            $cell->removeAttribute('t');
+                            $v = $dom4->createElementNS($ns4, 'v');
+                            $v->textContent = $cellValue;
+                            $cell->appendChild($v);
+                        }
+                    }
+                    $filledCols[] = $reCol;
+                }
+            }
+
             // Delete unused columns (rows 1-3) after last filled column
             $lastFilledIdx = array_search(end($filledCols), $columns, true);
             if ($lastFilledIdx !== false && $lastFilledIdx < 8) {
@@ -2197,24 +2355,32 @@ class MonitoringController extends Controller
     {
         $request->validate([
             'template' => 'required|file|mimes:xlsx',
-            'type' => 'required|in:monitoring,pra-monitoring',
+            'type' => 'required|in:monitoring,pra-monitoring,re-monitoring',
         ]);
 
         $filename = 'excel-template-' . $request->type . '.xlsx';
         $request->file('template')->storeAs('', $filename);
 
-        $label = $request->type === 'pra-monitoring' ? 'Pra-Monitoring' : 'Monitoring';
+        $label = match ($request->type) {
+            'pra-monitoring' => 'Pra-Monitoring',
+            're-monitoring' => 'Re-Monitoring',
+            default => 'Monitoring',
+        };
         return back()->with('success', "Template Excel {$label} berhasil diupload.");
     }
 
     public static function deleteTemplate(\Illuminate\Http\Request $request)
     {
-        $request->validate(['type' => 'required|in:monitoring,pra-monitoring']);
+        $request->validate(['type' => 'required|in:monitoring,pra-monitoring,re-monitoring']);
 
         $filename = 'excel-template-' . $request->type . '.xlsx';
         Storage::delete($filename);
 
-        $label = $request->type === 'pra-monitoring' ? 'Pra-Monitoring' : 'Monitoring';
+        $label = match ($request->type) {
+            'pra-monitoring' => 'Pra-Monitoring',
+            're-monitoring' => 'Re-Monitoring',
+            default => 'Monitoring',
+        };
         return back()->with('success', "Template Excel {$label} berhasil dihapus.");
     }
 
@@ -2349,12 +2515,18 @@ class MonitoringController extends Controller
 
     public function destroy(MonitoringReport $report)
     {
+        $this->authorizeReport($report);
+
         session()->forget('assessment_snapshot_' . $report->id);
 
         $report->results()->delete();
         $report->delete();
 
-        $redirect = $this->type === 'pra-monitoring' ? '/report/pre-monitoring' : '/report';
+        $redirect = match ($this->type) {
+            'pra-monitoring' => '/report/pre-monitoring',
+            're-monitoring' => '/report/re-monitoring',
+            default => '/report',
+        };
 
         return redirect($redirect)->with('success', 'Laporan berhasil dihapus.');
     }
@@ -2366,5 +2538,12 @@ class MonitoringController extends Controller
             ->whereNotNull('checkin_at')
             ->whereNull('submit_at')
             ->first();
+    }
+
+    protected function authorizeReport(MonitoringReport $report): void
+    {
+        if ($report->user_id !== Auth::id() && Auth::user()?->role !== 'admin') {
+            abort(403, 'Anda tidak berhak mengakses laporan ini.');
+        }
     }
 }

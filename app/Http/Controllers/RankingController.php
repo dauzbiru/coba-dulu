@@ -15,9 +15,68 @@ class RankingController extends Controller
 {
     public function index(Request $request)
     {
-        $data = $this->loadRanking($request);
+        $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
 
-        return view('ranking.index', $data);
+        $existingLabels = MonitoringReport::whereIn('type', ['monitoring', 'import'])
+            ->whereNotNull('submit_at')
+            ->whereNotNull('periode_label')
+            ->distinct()
+            ->pluck('periode_label');
+
+        $periodeLabels = SemesterPeriod::orderByDesc('year')->orderByDesc('start_month')
+            ->get()
+            ->filter(fn($p) => $existingLabels->contains($p->label))
+            ->pluck('label');
+
+        $query = MonitoringReport::with('gerai', 'user')
+            ->whereIn('type', ['monitoring', 'import'])
+            ->whereNotNull('submit_at');
+
+        if ($search) {
+            $query->whereHas('gerai', function ($q) use ($search) {
+                $q->where('kode_gerai', 'like', "%{$search}%")
+                  ->orWhere('nama_gerai', 'like', "%{$search}%");
+            });
+        }
+
+        $reports = $query
+            ->select('monitoring_reports.*')
+            ->join('gerais', 'monitoring_reports.gerai_id', '=', 'gerais.id')
+            ->orderBy('gerais.kode_gerai')
+            ->orderBy('monitoring_reports.submit_at', 'desc')
+            ->paginate(50)
+            ->through(function ($report) {
+                if ($report->nilai !== null) {
+                    $total = (float) $report->nilai;
+                } else {
+                    $report->load('results.item.criteria');
+                    $total = 0;
+                    foreach ($report->results as $result) {
+                        $item = $result->item;
+                        if (!$item || !$item->bobot) continue;
+                        $criteriaCount = $item->criteria->count();
+                        if ($criteriaCount <= 1) continue;
+                        $interval = $item->bobot / ($criteriaCount - 1);
+                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
+                        if ($idx !== false) {
+                            $total += $item->bobot - ($interval * $idx);
+                        }
+                    }
+                }
+                return [
+                    'id' => $report->id,
+                    'gerai' => $report->gerai,
+                    'petugas' => $report->user?->name ?? '-',
+                    'tanggal' => $report->submit_at,
+                    'skor' => $total,
+                    'periode_label' => $report->periode_label,
+                ];
+            });
+
+        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+
+        return view('ranking.index', compact('reports', 'periodeLabels', 'search', 'gerais'));
     }
 
     public function excel(Request $request)
@@ -26,7 +85,16 @@ class RankingController extends Controller
         $reports = $data['reports'];
 
         $writer = new Writer();
-        $filename = storage_path('app/peringkat-monitoring.xlsx');
+
+        $periodes = $reports->pluck('periode_label')->filter()->unique()->sort()->values();
+        if ($periodes->count() > 1) {
+            $periodeSuffix = $periodes->first() . ' s/d ' . $periodes->last();
+        } elseif ($periodes->count() === 1) {
+            $periodeSuffix = $periodes->first();
+        } else {
+            $periodeSuffix = 'Semua';
+        }
+        $filename = storage_path('app/peringkat-monitoring-' . $periodeSuffix . '.xlsx');
         $writer->openToFile($filename);
 
         $writer->addRow(Row::fromValues(['Peringkat', 'Gerai', 'Kode', 'Franchisee', 'Petugas', 'Tanggal', 'Periode', 'Skor']));
@@ -38,7 +106,7 @@ class RankingController extends Controller
                 $r['gerai']->kode_gerai,
                 $r['gerai']->franchisee,
                 $r['petugas'],
-                $r['tanggal']->format('d/m/Y'),
+                $r['tanggal']->format('d-m-Y'),
                 $r['periode_label'] ?? '-',
                 $r['skor'],
             ]));
@@ -50,7 +118,7 @@ class RankingController extends Controller
 
     public function performa(Request $request)
     {
-        $gerais = Gerai::orderBy('kode_gerai')->get();
+        $gerais = Gerai::active()->orderBy('kode_gerai')->get();
         $geraiId = $request->input('gerai_id');
 
         $chartLabels = [];
@@ -87,10 +155,10 @@ class RankingController extends Controller
                         }
                     }
                 }
-                $chartLabels[] = $report->submit_at->format('d/m/Y');
+                $chartLabels[] = $report->submit_at->format('d-m-Y');
                 $chartData[] = round($total, 2);
                 $reportData[] = [
-                    'tanggal' => $report->submit_at->format('d/m/Y'),
+                    'tanggal' => $report->submit_at->format('d-m-Y'),
                     'skor' => round($total, 2),
                 ];
             }
@@ -102,8 +170,9 @@ class RankingController extends Controller
     public function praMonitoring(Request $request)
     {
         $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
 
-        $query = MonitoringReport::with('gerai', 'user', 'results.item.criteria')
+        $query = MonitoringReport::with('gerai', 'user')
             ->where('type', 'pra-monitoring')
             ->whereNotNull('submit_at');
 
@@ -114,52 +183,57 @@ class RankingController extends Controller
             });
         }
 
-        $reports = $query->get()->map(function ($report) {
-            if ($report->nilai !== null) {
-                $total = (float) $report->nilai;
-            } else {
-                $total = 0;
-                foreach ($report->results as $result) {
-                    $item = $result->item;
-                    if (!$item || !$item->bobot) continue;
-                    $criteriaCount = $item->criteria->count();
-                    if ($criteriaCount <= 1) continue;
-                    $interval = $item->bobot / ($criteriaCount - 1);
-                    $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                    if ($idx !== false) {
-                        $total += $item->bobot - ($interval * $idx);
+        $reports = $query
+            ->select('monitoring_reports.*')
+            ->join('gerais', 'monitoring_reports.gerai_id', '=', 'gerais.id')
+            ->orderBy('gerais.kode_gerai')
+            ->orderBy('monitoring_reports.submit_at', 'desc')
+            ->paginate(50)
+            ->through(function ($report) {
+                if ($report->nilai !== null) {
+                    $total = (float) $report->nilai;
+                } else {
+                    $report->load('results.item.criteria');
+                    $total = 0;
+                    foreach ($report->results as $result) {
+                        $item = $result->item;
+                        if (!$item || !$item->bobot) continue;
+                        $criteriaCount = $item->criteria->count();
+                        if ($criteriaCount <= 1) continue;
+                        $interval = $item->bobot / ($criteriaCount - 1);
+                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
+                        if ($idx !== false) {
+                            $total += $item->bobot - ($interval * $idx);
+                        }
                     }
                 }
-            }
-            return [
-                'gerai' => $report->gerai,
-                'petugas' => $report->user?->name ?? '-',
-                'tanggal' => $report->submit_at,
-                'skor' => $total,
-            ];
-        })->sort(function ($a, $b) {
-            $cmp = strcmp($a['gerai']->kode_gerai, $b['gerai']->kode_gerai);
-            if ($cmp !== 0) return $cmp;
-            return $b['tanggal']->timestamp <=> $a['tanggal']->timestamp;
-        })->values();
+                return [
+                    'gerai' => $report->gerai,
+                    'petugas' => $report->user?->name ?? '-',
+                    'tanggal' => $report->submit_at,
+                    'skor' => $total,
+                ];
+            });
 
         return view('ranking.pra-monitoring', compact('reports', 'search'));
     }
 
-    public function peringkat()
+    public function peringkat(Request $request)
     {
-        $data = $this->loadPeringkat();
+        $data = $this->loadPeringkat($request->input('periode'));
         return view('ranking.peringkat', $data);
     }
 
-    public function peringkatExcel()
+    public function peringkatExcel(Request $request)
     {
-        $data = $this->loadPeringkat();
+        $selectedPeriode = $request->input('periode');
+        $data = $this->loadPeringkat($selectedPeriode);
         $rows = $data['rows'];
         $colLabels = $data['colLabels'];
 
         $writer = new Writer();
-        $filename = storage_path('app/peringkat-monitoring.xlsx');
+        $periodeSuffix = $selectedPeriode ?? 'Semua';
+        $filename = storage_path('app/Peringkat Monitoring Gabungan (' . $periodeSuffix . ').xlsx');
         $writer->openToFile($filename);
 
         $headers = ['No', 'Kode Gerai', 'Nama Gerai'];
@@ -183,35 +257,66 @@ class RankingController extends Controller
         return response()->download($filename)->deleteFileAfterSend(true);
     }
 
-    private function loadPeringkat()
+    private function loadPeringkat($selectedPeriode = null)
     {
-        $gerais = Gerai::orderBy('kode_gerai')->get();
-        $rows = [];
-        $periodCounts = [0 => [], 1 => [], 2 => []];
+        $existingLabels = MonitoringReport::whereIn('type', ['monitoring', 'import'])
+            ->whereNotNull('submit_at')
+            ->whereNotNull('periode_label')
+            ->distinct()
+            ->pluck('periode_label');
 
+        $periodeLabels = SemesterPeriod::orderByDesc('year')->orderByDesc('start_month')
+            ->get()
+            ->filter(fn($p) => $existingLabels->contains($p->label))
+            ->pluck('label')
+            ->values();
+
+        if (!$selectedPeriode && $periodeLabels->isNotEmpty()) {
+            $selectedPeriode = $periodeLabels->first();
+        }
+
+        if ($selectedPeriode && $periodeLabels->contains($selectedPeriode)) {
+            $idx = $periodeLabels->search($selectedPeriode);
+            $periodKeys = [
+                $periodeLabels[$idx] ?? null,
+                $periodeLabels[$idx + 1] ?? null,
+                $periodeLabels[$idx + 2] ?? null,
+            ];
+        } else {
+            $periodKeys = [null, null, null];
+        }
+
+        $periodKeys = array_filter($periodKeys);
+        $selectedKey = $periodKeys[0] ?? null;
+
+        $geraiIds = $selectedKey
+            ? MonitoringReport::whereIn('type', ['monitoring', 'import'])
+                ->whereNotNull('submit_at')
+                ->where('periode_label', $selectedKey)
+                ->distinct()
+                ->pluck('gerai_id')
+            : collect();
+
+        $gerais = $geraiIds->isNotEmpty()
+            ? Gerai::whereIn('id', $geraiIds)->orderBy('kode_gerai')->get()
+            : collect();
+
+        $rows = [];
         foreach ($gerais as $gerai) {
             $reports = MonitoringReport::where('gerai_id', $gerai->id)
                 ->whereIn('type', ['monitoring', 'import'])
                 ->whereNotNull('submit_at')
-                ->orderBy('submit_at', 'desc')
-                ->take(3)
-                ->get();
-
-            if ($reports->isEmpty()) continue;
+                ->whereIn('periode_label', $periodKeys)
+                ->get()
+                ->keyBy('periode_label');
 
             $scores = [];
-            foreach ($reports as $i => $r) {
-                $periode = $r->periode_label ?? $r->submit_at->format('M Y');
-                $skor = $r->nilai !== null ? (float) $r->nilai : 0;
-                $scores[] = [
-                    'periode' => $periode,
-                    'skor' => $skor,
-                ];
-                if (isset($periodCounts[$i][$periode])) {
-                    $periodCounts[$i][$periode]++;
-                } else {
-                    $periodCounts[$i][$periode] = 1;
-                }
+            foreach ($periodKeys as $k) {
+                $r = $k && isset($reports[$k]) ? $reports[$k] : null;
+                $scores[] = $r ? [
+                    'periode' => $k,
+                    'skor' => $r->nilai !== null ? round((float) $r->nilai) : 0,
+                ] : null;
             }
 
             $rows[] = [
@@ -237,11 +342,11 @@ class RankingController extends Controller
             return $ta <=> $tb;
         });
 
-        $colLabels = [];
-        foreach ($periodCounts as $i => $counts) {
-            arsort($counts);
-            $colLabels[] = array_key_first($counts) ?? "Periode " . ($i + 1);
-        }
+        $colLabels = [
+            $periodKeys[0] ?? 'Terbaru',
+            $periodKeys[1] ?? 'Sebelumnya',
+            $periodKeys[2] ?? 'Terlama',
+        ];
 
         $latestScores = array_filter(array_column(array_column($rows, 'p3'), 'skor'), fn($v) => $v !== null);
         $totalLatest = count($latestScores);
@@ -260,7 +365,7 @@ class RankingController extends Controller
             $gradePcts[$grade] = $totalLatest > 0 ? round($count / $totalLatest * 100, 2) : 0;
         }
 
-        return compact('rows', 'colLabels', 'pctGe975', 'pctLe974', 'totalLatest', 'gradeCounts', 'gradePcts');
+        return compact('rows', 'colLabels', 'pctGe975', 'pctLe974', 'totalLatest', 'gradeCounts', 'gradePcts', 'periodeLabels', 'selectedPeriode');
     }
 
     public function importForm()
@@ -314,7 +419,15 @@ class RankingController extends Controller
         // Validate all rows first, reject all if any error
         $validatedRows = [];
         foreach ($rows as $values) {
-            $gerai = Gerai::where('kode_gerai', $values[0])->first();
+            $namaGerai = $values[1] ?? '';
+            $gerai = null;
+            if ($namaGerai) {
+                $gerai = Gerai::where('kode_gerai', $values[0])->where('nama_gerai', $namaGerai)->first();
+            }
+            if (!$gerai) {
+                $gerai = Gerai::active()->where('kode_gerai', $values[0])->first()
+                    ?? Gerai::where('kode_gerai', $values[0])->latest()->first();
+            }
             if (!$gerai) {
                 $errors[] = "Kode gerai '{$values[0]}' tidak ditemukan";
                 continue;
@@ -362,15 +475,33 @@ class RankingController extends Controller
         foreach ($validatedRows as $v) {
             $periodeLabel = $v['matched'] ? $v['matched']->label : null;
 
-            MonitoringReport::create([
-                'gerai_id' => $v['gerai']->id,
-                'user_id' => $v['petugas']->id,
-                'type' => 'import',
-                'nilai' => $v['skor'],
-                'periode_label' => $periodeLabel,
-                'checkin_at' => $v['tanggal'],
-                'submit_at' => $v['tanggal'],
-            ]);
+            $existing = $periodeLabel
+                ? MonitoringReport::where('gerai_id', $v['gerai']->id)
+                    ->where('type', 'import')
+                    ->where('periode_label', $periodeLabel)
+                    ->whereNotNull('submit_at')
+                    ->first()
+                : null;
+
+            if ($existing) {
+                $existing->update([
+                    'user_id' => $v['petugas']->id,
+                    'nilai' => $v['skor'],
+                    'grade' => $v['skor'] !== null ? \App\Models\MonitoringReport::gradeFromScore($v['skor']) : null,
+                    'submit_at' => $v['tanggal'],
+                ]);
+            } else {
+                MonitoringReport::create([
+                    'gerai_id' => $v['gerai']->id,
+                    'user_id' => $v['petugas']->id,
+                    'type' => 'import',
+                    'nilai' => $v['skor'],
+                    'grade' => $v['skor'] !== null ? \App\Models\MonitoringReport::gradeFromScore($v['skor']) : null,
+                    'periode_label' => $periodeLabel,
+                    'checkin_at' => $v['tanggal'],
+                    'submit_at' => $v['tanggal'],
+                ]);
+            }
 
             if (!$v['matched']) {
                 $unmatchedDates[] = $v['tanggal']->copy();
@@ -402,6 +533,7 @@ class RankingController extends Controller
     {
         $periodeLabel = $request->input('periode_label');
         $search = $request->input('search');
+        if ($search) $search = str_replace(['%', '_'], '', $search);
 
         $existingLabels = MonitoringReport::whereIn('type', ['monitoring', 'import'])
             ->whereNotNull('submit_at')
@@ -414,7 +546,7 @@ class RankingController extends Controller
             ->filter(fn($p) => $existingLabels->contains($p->label))
             ->pluck('label');
 
-        $query = MonitoringReport::with('gerai', 'user', 'results.item.criteria')
+        $query = MonitoringReport::with('gerai', 'user')
             ->whereIn('type', ['monitoring', 'import'])
             ->whereNotNull('submit_at');
 
@@ -433,6 +565,7 @@ class RankingController extends Controller
             if ($report->nilai !== null) {
                 $total = (float) $report->nilai;
             } else {
+                $report->load('results.item.criteria');
                 $total = 0;
                 foreach ($report->results as $result) {
                     $item = $result->item;
@@ -447,6 +580,7 @@ class RankingController extends Controller
                 }
             }
             return [
+                'id' => $report->id,
                 'gerai' => $report->gerai,
                 'petugas' => $report->user?->name ?? '-',
                 'tanggal' => $report->submit_at,
@@ -462,5 +596,64 @@ class RankingController extends Controller
         })->values();
 
         return compact('reports', 'periodeLabels', 'periodeLabel', 'search');
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'nilai' => 'required|numeric|min:0|max:1000',
+            'checkin_at' => 'required|date',
+            'petugas' => 'required|string|max:255',
+        ]);
+
+        $report = MonitoringReport::findOrFail($id);
+
+        $petugas = User::where('name', $request->input('petugas'))->orWhere('username', $request->input('petugas'))->first();
+        if ($petugas) {
+            $report->user_id = $petugas->id;
+        }
+
+        $nilai = (float) $request->input('nilai');
+        $report->nilai = $nilai;
+        $report->grade = MonitoringReport::gradeFromScore($nilai);
+        $report->checkin_at = \Carbon\Carbon::parse($request->input('checkin_at'));
+        $report->submit_at = \Carbon\Carbon::parse($request->input('checkin_at'));
+        $report->save();
+
+        return redirect('/ranking')->with('success', 'Nilai berhasil diperbarui.');
+    }
+
+    public function destroy($id)
+    {
+        $report = MonitoringReport::findOrFail($id);
+        $report->results()->delete();
+        $report->finding()?->delete();
+        $report->delete();
+
+        return redirect('/ranking')->with('success', 'Nilai berhasil dihapus.');
+    }
+
+    public function hapusPeriode(Request $request)
+    {
+        $periodeLabel = $request->input('periode_label');
+
+        if (!$periodeLabel) {
+            return redirect('/ranking')->with('error', 'Pilih periode terlebih dahulu.');
+        }
+
+        $reports = MonitoringReport::whereIn('type', ['monitoring', 'import'])
+            ->where('periode_label', $periodeLabel)
+            ->whereNotNull('submit_at')
+            ->get();
+
+        $count = 0;
+        foreach ($reports as $report) {
+            $report->results()->delete();
+            $report->finding()?->delete();
+            $report->delete();
+            $count++;
+        }
+
+        return redirect('/ranking')->with('success', "Berhasil menghapus {$count} data nilai periode {$periodeLabel}.");
     }
 }

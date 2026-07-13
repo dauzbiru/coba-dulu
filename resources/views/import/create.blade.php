@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Import Excel - Monapps')
+@section('title', 'Import Excel - MARS')
 
 @section('content')
     <div class="max-w-lg mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8">

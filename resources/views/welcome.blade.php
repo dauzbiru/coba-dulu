@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monapps</title>
+    <title>MARS — Monitoring Assessment and Reporting System</title>
+    <link rel="icon" type="image/png" href="/images/biru-favicon.png?v=5">
+    <link rel="shortcut icon" href="/favicon.ico?v=5">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
     <div class="text-center w-full max-w-md">
-        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Monapps</h1>
-        <p class="text-gray-600 mb-8">Selamat datang di aplikasi Monapps</p>
+        <img src="/images/logo.png" alt="MARS" class="h-16 w-auto mx-auto mb-4">
+        <p class="text-gray-600 mb-8">Selamat datang di Monitoring Assessment and Reporting System</p>
 
         @guest
             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">

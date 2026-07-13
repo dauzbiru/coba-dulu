@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Edit Periode Semester - Monapps')
+@section('title', 'Edit Periode Semester - MARS')
 
 @section('content')
     <div class="max-w-lg mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8">

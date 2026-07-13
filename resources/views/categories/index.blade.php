@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Tugas - Monapps')
+@section('title', 'Tugas - MARS')
 
 @push('head')
 <style>
@@ -19,10 +19,7 @@
                     <span class="text-xs font-normal text-gray-400 ml-2">total bobot {{ $totalBobot }}</span>
                 @endif
             </h2>
-            <div class="flex gap-2">
-                <a href="/categories/create"
-                class="inline-block text-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">+ Tugas</a>
-            </div>
+
         </div>
 
         <div class="p-4 sm:p-6 space-y-3" id="sortable-categories">
@@ -44,9 +41,9 @@
                         </p>
                     </a>
                     <div class="flex gap-1 shrink-0">
-                        <a href="/categories/{{ $cat->id }}/edit" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
+                        <button onclick="openEditModal({{ $cat->id }})" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        </a>
+                        </button>
                         <form method="POST" action="/categories/{{ $cat->id }}" onsubmit="showConfirm('Hapus kategori ini?', function(){ this.submit(); }.bind(this)); return false;">
                             @csrf @method('DELETE')
                             <button class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg">
@@ -60,6 +57,79 @@
             @endforelse
         </div>
     </div>
+
+<button onclick="openCreateModal()"
+    class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center cursor-pointer">
+    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+        <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
+    </svg>
+</button>
+
+{{-- Modal Create --}}
+<div id="createModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeCreateModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">Tambah Tugas</h2>
+        <form method="POST" action="/categories">
+            @csrf
+            <div class="mb-6">
+                <label for="create_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Tugas</label>
+                <input id="create_name" type="text" name="name" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Modal Edit --}}
+<div id="editModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeEditModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 sm:p-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-6">Edit Tugas</h2>
+        <form id="editForm" method="POST" action="">
+            @csrf @method('PUT')
+            <div class="mb-6">
+                <label for="edit_name" class="block text-sm font-medium text-gray-700 mb-1">Nama Tugas</label>
+                <input id="edit_name" type="text" name="name" required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
+                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+var categoryData = {!! json_encode($categories->map(fn($c) => [
+    'id' => $c->id,
+    'name' => $c->name,
+])) !!};
+
+function openCreateModal() {
+    document.getElementById('create_name').value = '';
+    document.getElementById('createModal').classList.remove('hidden');
+}
+function closeCreateModal() {
+    document.getElementById('createModal').classList.add('hidden');
+}
+
+function openEditModal(id) {
+    var c = categoryData.find(function(x) { return x.id === id; });
+    if (!c) return;
+    document.getElementById('editForm').action = '/categories/' + id;
+    document.getElementById('edit_name').value = c.name;
+    document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal() {
+    document.getElementById('editModal').classList.add('hidden');
+}
+</script>
 @endsection
 
 @push('scripts')

@@ -12,107 +12,165 @@ use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PenjelasanFormulirController;
 
 Route::get('/', function () {
+    if (Auth::check()) {
+        if (Auth::user()->role === 'admin') {
+            return redirect('/dashboard');
+        }
+        return redirect('/guest');
+    }
     return view('welcome');
 });
 
-Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->middleware('auth');
+Route::get('/guest', function () {
+    if (Auth::user()->role === 'admin') {
+        return redirect('/dashboard');
+    }
+    return view('guest.landing');
+})->middleware('auth');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::get('/user', [UserController::class, 'index'])->middleware('auth');
-Route::get('/user/create', [UserController::class, 'create'])->middleware('auth');
-Route::post('/user', [UserController::class, 'store'])->middleware('auth');
-Route::get('/user/{id}/edit', [UserController::class, 'edit'])->middleware('auth');
-Route::put('/user/{id}', [UserController::class, 'updateUser'])->middleware('auth');
-Route::delete('/user/{id}', [UserController::class, 'destroy'])->middleware('auth');
-Route::put('/user', [UserController::class, 'update'])->middleware('auth');
-
 Route::middleware('auth')->group(function () {
-    Route::get('/categories', [CategoryController::class, 'index']);
-    Route::get('/categories/create', [CategoryController::class, 'create']);
-    Route::post('/categories', [CategoryController::class, 'store']);
-    Route::put('/categories/reorder', [CategoryController::class, 'reorder']);
-    Route::get('/categories/{category}', [CategoryController::class, 'show']);
-    Route::get('/categories/{category}/edit', [CategoryController::class, 'edit']);
-    Route::put('/categories/{category}', [CategoryController::class, 'update']);
-    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 
-    Route::get('/tugas/penjelasan-formulir-2', [PenjelasanFormulirController::class, 'index'])->defaults('formulir', 2);
-    Route::get('/tugas/penjelasan-formulir-3', [PenjelasanFormulirController::class, 'index'])->defaults('formulir', 3);
-    Route::post('/tugas/penjelasan-formulir/{formulir}', [PenjelasanFormulirController::class, 'store']);
-    Route::put('/tugas/penjelasan-formulir/{penjelasan_formulir}', [PenjelasanFormulirController::class, 'update']);
-    Route::delete('/tugas/penjelasan-formulir/{penjelasan_formulir}', [PenjelasanFormulirController::class, 'destroy']);
-    Route::get('/tugas/penjelasan-formulir/{formulir}/import', [PenjelasanFormulirController::class, 'importForm']);
-    Route::post('/tugas/penjelasan-formulir/{formulir}/import', [PenjelasanFormulirController::class, 'import']);
-    Route::get('/tugas/penjelasan-formulir/{formulir}/template', [PenjelasanFormulirController::class, 'template']);
+    // === Admin-only routes ===
+    Route::middleware('admin')->group(function () {
+        // User management
+        Route::get('/user', [UserController::class, 'index']);
+        Route::get('/user/create', [UserController::class, 'create']);
+        Route::post('/user', [UserController::class, 'store']);
+        Route::get('/user/{id}/edit', [UserController::class, 'edit']);
+        Route::put('/user/{id}', [UserController::class, 'updateUser']);
+        Route::delete('/user/{id}', [UserController::class, 'destroy']);
 
-    Route::get('/categories/{category}/items/create', [ItemController::class, 'create']);
-    Route::post('/categories/{category}/items', [ItemController::class, 'store']);
-    Route::get('/items/{item}/edit', [ItemController::class, 'edit']);
-    Route::put('/items/{item}', [ItemController::class, 'update']);
-    Route::put('/items/{item}/up', [ItemController::class, 'moveUp']);
-    Route::put('/items/{item}/down', [ItemController::class, 'moveDown']);
-    Route::delete('/items/{item}', [ItemController::class, 'destroy']);
+        // Categories
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::get('/categories/create', [CategoryController::class, 'create']);
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::put('/categories/reorder', [CategoryController::class, 'reorder']);
+        Route::get('/categories/{category}', [CategoryController::class, 'show']);
+        Route::get('/categories/{category}/edit', [CategoryController::class, 'edit']);
+        Route::put('/categories/{category}', [CategoryController::class, 'update']);
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
 
-    Route::put('/categories/{category}/items/reorder', [ItemController::class, 'reorder']);
-    Route::put('/categories/{category}/items/bobot', [ItemController::class, 'batchBobot']);
+        // Penjelasan Formulir
+        Route::get('/tugas/penjelasan-formulir-2', [PenjelasanFormulirController::class, 'index'])->defaults('formulir', 2);
+        Route::get('/tugas/penjelasan-formulir-3', [PenjelasanFormulirController::class, 'index'])->defaults('formulir', 3);
+        Route::post('/tugas/penjelasan-formulir/{formulir}', [PenjelasanFormulirController::class, 'store']);
+        Route::put('/tugas/penjelasan-formulir/{penjelasan_formulir}', [PenjelasanFormulirController::class, 'update']);
+        Route::delete('/tugas/penjelasan-formulir/{penjelasan_formulir}', [PenjelasanFormulirController::class, 'destroy']);
+        Route::get('/tugas/penjelasan-formulir/{formulir}/import', [PenjelasanFormulirController::class, 'importForm']);
+        Route::post('/tugas/penjelasan-formulir/{formulir}/import', [PenjelasanFormulirController::class, 'import']);
+        Route::get('/tugas/penjelasan-formulir/{formulir}/template', [PenjelasanFormulirController::class, 'template']);
 
-    Route::get('/items/{item}/criteria', [CriterionController::class, 'index']);
-    Route::get('/items/{item}/criteria/create', [CriterionController::class, 'create']);
-    Route::post('/items/{item}/criteria', [CriterionController::class, 'store']);
-    Route::post('/items/{item}/criteria/batch', [CriterionController::class, 'batchStore']);
-    Route::put('/items/{item}/criteria/reorder', [CriterionController::class, 'reorder']);
-    Route::get('/items/{item}/criteria/{criterion}/edit', [CriterionController::class, 'edit']);
-    Route::put('/items/{item}/criteria/{criterion}', [CriterionController::class, 'update']);
-    Route::delete('/items/{item}/criteria/{criterion}', [CriterionController::class, 'destroy']);
+        // Items + Criteria
+        Route::get('/categories/{category}/items/create', [ItemController::class, 'create']);
+        Route::post('/categories/{category}/items', [ItemController::class, 'store']);
+        Route::get('/items/{item}/edit', [ItemController::class, 'edit']);
+        Route::put('/items/{item}', [ItemController::class, 'update']);
+        Route::put('/items/{item}/up', [ItemController::class, 'moveUp']);
+        Route::put('/items/{item}/down', [ItemController::class, 'moveDown']);
+        Route::delete('/items/{item}', [ItemController::class, 'destroy']);
+        Route::put('/categories/{category}/items/reorder', [ItemController::class, 'reorder']);
+        Route::put('/categories/{category}/items/bobot', [ItemController::class, 'batchBobot']);
 
-    // Gerai
-    Route::get('/gerais', [GeraiController::class, 'index']);
-    Route::get('/gerais/create', [GeraiController::class, 'create']);
-    Route::get('/gerais/import', [GeraiController::class, 'importForm']);
-    Route::post('/gerais/import', [GeraiController::class, 'importExcel']);
-    Route::get('/gerais/export', [GeraiController::class, 'exportExcel']);
-    Route::get('/gerais/template', [GeraiController::class, 'template']);
-    Route::post('/gerais', [GeraiController::class, 'store']);
-    Route::get('/gerais/{gerai}', [GeraiController::class, 'show']);
-    Route::get('/gerais/{gerai}/edit', [GeraiController::class, 'edit']);
-    Route::put('/gerais/{gerai}', [GeraiController::class, 'update']);
-    Route::delete('/gerais/{gerai}', [GeraiController::class, 'destroy']);
+        Route::get('/items/{item}/criteria', [CriterionController::class, 'index']);
+        Route::get('/items/{item}/criteria/create', [CriterionController::class, 'create']);
+        Route::post('/items/{item}/criteria', [CriterionController::class, 'store']);
+        Route::post('/items/{item}/criteria/batch', [CriterionController::class, 'batchStore']);
+        Route::put('/items/{item}/criteria/reorder', [CriterionController::class, 'reorder']);
+        Route::get('/items/{item}/criteria/{criterion}/edit', [CriterionController::class, 'edit']);
+        Route::put('/items/{item}/criteria/{criterion}', [CriterionController::class, 'update']);
+        Route::delete('/items/{item}/criteria/{criterion}', [CriterionController::class, 'destroy']);
 
-    Route::get('/ranking', [\App\Http\Controllers\RankingController::class, 'index']);
-    Route::get('/ranking/pra-monitoring', [\App\Http\Controllers\RankingController::class, 'praMonitoring']);
-    Route::get('/ranking/peringkat', [\App\Http\Controllers\RankingController::class, 'peringkat']);
-    Route::get('/ranking/peringkat/excel', [\App\Http\Controllers\RankingController::class, 'peringkatExcel']);
-    Route::get('/ranking/excel', [\App\Http\Controllers\RankingController::class, 'excel']);
-    Route::get('/ranking/performa', [\App\Http\Controllers\RankingController::class, 'performa']);
-    Route::get('/ranking/import', [\App\Http\Controllers\RankingController::class, 'importForm']);
-    Route::post('/ranking/import', [\App\Http\Controllers\RankingController::class, 'import']);
-    Route::get('/ranking/import/template', [\App\Http\Controllers\RankingController::class, 'template']);
+        // Gerai
+        Route::get('/gerais', [GeraiController::class, 'index']);
+        Route::get('/gerais/create', [GeraiController::class, 'create']);
+        Route::get('/gerais/import', [GeraiController::class, 'importForm']);
+        Route::post('/gerais/import', [GeraiController::class, 'importExcel']);
+        Route::get('/gerais/export', [GeraiController::class, 'exportExcel']);
+        Route::get('/gerais/template', [GeraiController::class, 'template']);
+        Route::post('/gerais', [GeraiController::class, 'store']);
+        Route::get('/gerais/{gerai}', [GeraiController::class, 'show']);
+        Route::get('/gerais/{gerai}/edit', [GeraiController::class, 'edit']);
+        Route::put('/gerais/{gerai}', [GeraiController::class, 'update']);
+        Route::delete('/gerais/{gerai}', [GeraiController::class, 'destroy']);
+        Route::post('/gerais/{gerai}/tutup', [GeraiController::class, 'tutup']);
+        Route::post('/gerais/{gerai}/buka', [GeraiController::class, 'buka']);
 
+        Route::get('/pgs', [\App\Http\Controllers\PgController::class, 'index']);
+        Route::post('/pgs', [\App\Http\Controllers\PgController::class, 'store']);
+        Route::put('/pgs/{pg}', [\App\Http\Controllers\PgController::class, 'update']);
+        Route::delete('/pgs/{pg}', [\App\Http\Controllers\PgController::class, 'destroy']);
+        Route::post('/pgs/import', [\App\Http\Controllers\PgController::class, 'importExcel']);
+        Route::get('/pgs/export', [\App\Http\Controllers\PgController::class, 'exportExcel']);
+        Route::get('/pgs/template', [\App\Http\Controllers\PgController::class, 'template']);
+
+        // Semester Periods
+        Route::get('/semester-periods', [\App\Http\Controllers\SemesterPeriodController::class, 'index']);
+        Route::get('/semester-periods/create', [\App\Http\Controllers\SemesterPeriodController::class, 'create']);
+        Route::post('/semester-periods', [\App\Http\Controllers\SemesterPeriodController::class, 'store']);
+        Route::get('/semester-periods/{semesterPeriod}/edit', [\App\Http\Controllers\SemesterPeriodController::class, 'edit']);
+        Route::put('/semester-periods/{semesterPeriod}', [\App\Http\Controllers\SemesterPeriodController::class, 'update']);
+        Route::delete('/semester-periods/{semesterPeriod}', [\App\Http\Controllers\SemesterPeriodController::class, 'destroy']);
+
+        // Import + Export
+        Route::get('/import', [ImportController::class, 'create']);
+        Route::post('/import', [ImportController::class, 'import']);
+        Route::get('/import/template', [ImportController::class, 'template']);
+
+        // Ranking write operations
+        Route::post('/ranking/hapus-periode', [\App\Http\Controllers\RankingController::class, 'hapusPeriode']);
+        Route::delete('/ranking/{id}', [\App\Http\Controllers\RankingController::class, 'destroy']);
+        Route::put('/ranking/{id}', [\App\Http\Controllers\RankingController::class, 'update']);
+        Route::get('/ranking/import', [\App\Http\Controllers\RankingController::class, 'importForm']);
+        Route::post('/ranking/import', [\App\Http\Controllers\RankingController::class, 'import']);
+        Route::get('/ranking/import/template', [\App\Http\Controllers\RankingController::class, 'template']);
+
+        // Excel Templates
+        Route::get('/excel-template', function () {
+            return view('excel-template');
+        });
+        Route::post('/excel-template/upload', [\App\Http\Controllers\MonitoringController::class, 'uploadTemplate']);
+        Route::delete('/excel-template/delete', [\App\Http\Controllers\MonitoringController::class, 'deleteTemplate']);
+
+        // Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
+        Route::get('/dashboard/chart-data', [\App\Http\Controllers\DashboardController::class, 'chartData']);
+
+        // Ranking
+        Route::get('/ranking', [\App\Http\Controllers\RankingController::class, 'index']);
+        Route::get('/ranking/pra-monitoring', [\App\Http\Controllers\RankingController::class, 'praMonitoring']);
+        Route::get('/ranking/peringkat', [\App\Http\Controllers\RankingController::class, 'peringkat']);
+        Route::get('/ranking/peringkat/excel', [\App\Http\Controllers\RankingController::class, 'peringkatExcel']);
+        Route::get('/ranking/excel', [\App\Http\Controllers\RankingController::class, 'excel']);
+        Route::get('/ranking/performa', [\App\Http\Controllers\RankingController::class, 'performa']);
+
+        // Report admin-only
+        Route::get('/report/pdf', [ReportController::class, 'pdf']);
+        Route::get('/report/excel', [ReportController::class, 'excel']);
+        Route::get('/report/analytics', [ReportController::class, 'analytics']);
+        Route::get('/report/analytics/excel', [ReportController::class, 'analyticsExcel']);
+        Route::get('/report/ambil-data', [ReportController::class, 'ambilData']);
+        Route::get('/report/checklist-tidak-sempurna', [ReportController::class, 'checklistTidakSempurna']);
+        Route::get('/report/export-all-excel', [ReportController::class, 'exportAllExcel']);
+        Route::get('/report/excel-detail', [ReportController::class, 'excelDetail']);
+
+        // Excel template download (example)
+        Route::get('/excel-template/example', [\App\Http\Controllers\MonitoringController::class, 'downloadExampleTemplate']);
+    });
+
+    // === All authenticated users (guest + admin) ===
+    // User self-profile update
+    Route::put('/user', [UserController::class, 'update']);
+
+    // Report (with ownership filtering in controller)
     Route::get('/report', [ReportController::class, 'index']);
     Route::get('/report/pre-monitoring', [ReportController::class, 'preMonitoring']);
-    Route::get('/report/pdf', [ReportController::class, 'pdf']);
-    Route::get('/report/excel', [ReportController::class, 'excel']);
-    Route::get('/report/analytics', [ReportController::class, 'analytics']);
-    Route::get('/report/analytics/excel', [ReportController::class, 'analyticsExcel']);
-    Route::get('/report/ambil-data', [ReportController::class, 'ambilData']);
-    Route::get('/report/checklist-tidak-sempurna', [ReportController::class, 'checklistTidakSempurna']);
-    Route::get('/report/export-all-excel', [ReportController::class, 'exportAllExcel']);
-    // Semester Periods
-    Route::get('/semester-periods', [\App\Http\Controllers\SemesterPeriodController::class, 'index']);
-    Route::get('/semester-periods/create', [\App\Http\Controllers\SemesterPeriodController::class, 'create']);
-    Route::post('/semester-periods', [\App\Http\Controllers\SemesterPeriodController::class, 'store']);
-    Route::get('/semester-periods/{semesterPeriod}/edit', [\App\Http\Controllers\SemesterPeriodController::class, 'edit']);
-    Route::put('/semester-periods/{semesterPeriod}', [\App\Http\Controllers\SemesterPeriodController::class, 'update']);
-    Route::delete('/semester-periods/{semesterPeriod}', [\App\Http\Controllers\SemesterPeriodController::class, 'destroy']);
+    Route::get('/report/re-monitoring', [ReportController::class, 'reMonitoring']);
 
-    Route::get('/import', [ImportController::class, 'create']);
-    Route::post('/import', [ImportController::class, 'import']);
-    Route::get('/import/template', [ImportController::class, 'template']);
-
-    // Monitoring
+    // Monitoring (with authorizeReport ownership check)
     Route::get('/monitoring', [\App\Http\Controllers\MonitoringController::class, 'selectGerai']);
     Route::get('/monitoring/checkin/{gerai}', [\App\Http\Controllers\MonitoringController::class, 'checkinForm']);
     Route::post('/monitoring/checkin/{gerai}', [\App\Http\Controllers\MonitoringController::class, 'doCheckin']);
@@ -144,11 +202,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/pra-monitoring/{report}', [\App\Http\Controllers\PraMonitoringController::class, 'show']);
     Route::delete('/pra-monitoring/{report}', [\App\Http\Controllers\PraMonitoringController::class, 'destroy']);
 
-    // Excel Templates
-    Route::get('/excel-template', function () {
-        return view('excel-template');
-    });
-    Route::get('/excel-template/example', [\App\Http\Controllers\MonitoringController::class, 'downloadExampleTemplate']);
-    Route::post('/excel-template/upload', [\App\Http\Controllers\MonitoringController::class, 'uploadTemplate']);
-    Route::delete('/excel-template/delete', [\App\Http\Controllers\MonitoringController::class, 'deleteTemplate']);
+    // Re-Monitoring
+    Route::get('/re-monitoring', [\App\Http\Controllers\ReMonitoringController::class, 'selectGerai']);
+    Route::get('/re-monitoring/checkin/{gerai}', [\App\Http\Controllers\ReMonitoringController::class, 'checkinForm']);
+    Route::post('/re-monitoring/checkin/{gerai}', [\App\Http\Controllers\ReMonitoringController::class, 'doCheckin']);
+    Route::get('/re-monitoring/{report}/assessment', [\App\Http\Controllers\ReMonitoringController::class, 'assessment']);
+    Route::get('/re-monitoring/{report}/assessment/{category}/form', [\App\Http\Controllers\ReMonitoringController::class, 'assessmentForm']);
+    Route::post('/re-monitoring/{report}/assessment/{category}/form', [\App\Http\Controllers\ReMonitoringController::class, 'saveAssessmentForm']);
+    Route::post('/re-monitoring/{report}/submit', [\App\Http\Controllers\ReMonitoringController::class, 'submit']);
+    Route::post('/re-monitoring/{report}/cancel', [\App\Http\Controllers\ReMonitoringController::class, 'cancelAssessment']);
+    Route::get('/re-monitoring/{report}/temuan', [\App\Http\Controllers\ReMonitoringController::class, 'temuanForm']);
+    Route::post('/re-monitoring/{report}/temuan', [\App\Http\Controllers\ReMonitoringController::class, 'saveTemuan']);
+    Route::get('/re-monitoring/{report}/pdf', [\App\Http\Controllers\ReMonitoringController::class, 'pdf']);
+    Route::get('/re-monitoring/{report}/excel', [\App\Http\Controllers\ReMonitoringController::class, 'excel']);
+    Route::get('/re-monitoring/{report}', [\App\Http\Controllers\ReMonitoringController::class, 'show']);
+    Route::delete('/re-monitoring/{report}', [\App\Http\Controllers\ReMonitoringController::class, 'destroy']);
 });

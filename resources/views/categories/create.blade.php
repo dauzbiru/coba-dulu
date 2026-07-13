@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Tambah Tugas - Monapps')
+@section('title', 'Tambah Tugas - MARS')
 
 @section('content')
     <div class="max-w-lg mx-auto bg-white rounded-xl shadow-md p-6 sm:p-8">

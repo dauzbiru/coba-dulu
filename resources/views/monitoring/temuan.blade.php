@@ -258,17 +258,9 @@ function toggleDropdown(btn) {
 
 
 
-var penjelasanItems2 = [
-    @foreach ($penjelasanItems as $item)
-        { kondisi: "{{ addslashes($item->kondisi) }}", penjelasan: "{{ addslashes($item->penjelasan) }}" },
-    @endforeach
-];
+var penjelasanItems2 = @json($penjelasanItems->map(fn($i) => ['kondisi' => $i->kondisi, 'penjelasan' => $i->penjelasan]));
 
-var penjelasanItems3 = [
-    @foreach ($penjelasanItems3 as $item)
-        { kondisi: "{{ addslashes($item->kondisi) }}", penjelasan: "{{ addslashes($item->penjelasan) }}" },
-    @endforeach
-];
+var penjelasanItems3 = @json($penjelasanItems3->map(fn($i) => ['kondisi' => $i->kondisi, 'penjelasan' => $i->penjelasan]));
 
 function getSuggestList(input) {
     var wrapper = input.closest('.relative');
@@ -301,7 +293,8 @@ function renderSuggestList(input, items) {
         divPenjelasan.className = 'text-xs text-gray-500 mt-0.5 break-words';
         li.appendChild(divKondisi);
         li.appendChild(divPenjelasan);
-        li.addEventListener('click', function() {
+        li.addEventListener('mousedown', function(e) {
+            e.preventDefault();
             input.value = item.penjelasan;
             list.classList.add('hidden');
         });

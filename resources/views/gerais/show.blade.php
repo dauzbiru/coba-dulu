@@ -5,7 +5,6 @@
 @section('content')
     <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-            <a href="/gerais" class="text-sm text-blue-600 hover:underline">&larr; Kembali</a>
             <h2 class="text-lg sm:text-xl font-bold text-gray-800 mt-1">{{ $gerai->nama_gerai }}</h2>
         </div>
         <a href="/gerais/{{ $gerai->id }}/edit"

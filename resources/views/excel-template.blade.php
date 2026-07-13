@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Template Excel - Monapps')
+@section('title', 'Template Excel - MARS')
 
 @section('content')
 <div class="max-w-lg mx-auto space-y-4">

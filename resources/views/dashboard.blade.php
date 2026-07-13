@@ -1,6 +1,11 @@
 @extends('layouts.admin')
 
-@section('title', 'Dashboard - Monapps')
+@section('title', 'Dashboard - MARS')
+
+@push('head')
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+@endpush
 
 @section('content')
     @if (isset($role) && $role === 'guest')
@@ -60,7 +65,7 @@
                                 <tr class="border-t">
                                     <td class="py-2.5 text-gray-800">{{ $report->gerai->nama_gerai }}</td>
                                     <td class="py-2.5 text-gray-500">{{ $report->user?->name ?? '-' }}</td>
-                                    <td class="py-2.5 text-gray-500">{{ $report->checkin_at ? $report->checkin_at->format('d M Y') : '-' }}</td>
+                                    <td class="py-2.5 text-gray-500">{{ $report->checkin_at ? $report->checkin_at->format('d-m-Y') : '-' }}</td>
                                     <td class="py-2.5">
                                         @if ($report->submit_at)
                                             <span class="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Selesai</span>
@@ -102,7 +107,7 @@
                                 <tr class="border-t">
                                     <td class="py-2.5 text-gray-800">{{ $report->gerai->nama_gerai }}</td>
                                     <td class="py-2.5 text-gray-500">{{ $report->user?->name ?? '-' }}</td>
-                                    <td class="py-2.5 text-gray-500">{{ $report->checkin_at ? $report->checkin_at->format('d M Y') : '-' }}</td>
+                                    <td class="py-2.5 text-gray-500">{{ $report->checkin_at ? $report->checkin_at->format('d-m-Y') : '-' }}</td>
                                     <td class="py-2.5">
                                         @if ($report->submit_at)
                                             <span class="inline-block px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">Selesai</span>
@@ -119,5 +124,84 @@
             </div>
         </div>
     </div>
+
+    {{-- Grafik Batang --}}
+    <div class="bg-white rounded-xl shadow-sm border p-5 mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="font-semibold text-gray-800">Grade per Periode</h2>
+            </div>
+            <select id="periodSelect" onchange="loadChart(this.value)" class="text-sm border rounded-lg px-3 py-1.5 text-gray-700">
+                @foreach ($periods as $p)
+                    <option value="{{ $p->label }}" {{ $p->label === $selectedPeriod ? 'selected' : '' }}>{{ $p->label }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="relative" style="height: 300px;">
+            <canvas id="gradeChart"></canvas>
+        </div>
+    </div>
     @endif
+@push('scripts')
+<script>
+var chart = null;
+
+function buildChart(labels, data) {
+    var ctx = document.getElementById('gradeChart').getContext('2d');
+
+    if (chart) {
+        chart.destroy();
+    }
+
+    chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'A', data: data.map(function(d) { return d.A; }), backgroundColor: '#22c55e', borderRadius: 4 },
+                { label: 'B', data: data.map(function(d) { return d.B; }), backgroundColor: '#3b82f6', borderRadius: 4 },
+                { label: 'C', data: data.map(function(d) { return d.C; }), backgroundColor: '#eab308', borderRadius: 4 },
+                { label: 'D', data: data.map(function(d) { return d.D; }), backgroundColor: '#f97316', borderRadius: 4 },
+                { label: 'E', data: data.map(function(d) { return d.E; }), backgroundColor: '#ef4444', borderRadius: 4 },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            clip: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } },
+                datalabels: {
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 2,
+                    color: '#374151',
+                    font: { weight: 'bold', size: 11 },
+                    formatter: function(value) { return value > 0 ? value : ''; }
+                }
+            },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    beginAtZero: true,
+                    grace: '10%',
+                    ticks: { precision: 0, maxTicksLimit: 15 },
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+}
+
+function loadChart(period) {
+    fetch('/dashboard/chart-data?period=' + encodeURIComponent(period))
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            buildChart(res.labels, res.data);
+        });
+}
+
+buildChart(@json($chartLabels), @json($chartData));
+</script>
+@endpush
 @endsection

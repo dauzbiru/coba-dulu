@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="max-w-md mx-auto">
-    <a href="/categories/{{ $item->category_id }}" class="text-sm text-blue-600 hover:underline">&larr; Kembali</a>
     <h2 class="text-lg font-bold text-gray-800 mt-2 mb-4">Edit Opsi: {{ $item->name }}</h2>
 
     <form method="POST" action="/items/{{ $item->id }}/criteria/{{ $criterion->id }}" class="bg-white rounded-xl shadow-md p-4 sm:p-6 space-y-4">

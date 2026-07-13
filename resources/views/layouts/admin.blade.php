@@ -3,11 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Admin - Monapps')</title>
+    <title>@yield('title', 'Admin - MARS')</title>
+    <link rel="icon" type="image/png" href="/images/biru-favicon.png?v=5">
+    <link rel="shortcut icon" href="/favicon.ico?v=5">
     <script src="https://cdn.tailwindcss.com"></script>
     @stack('head')
 </head>
 <body class="bg-gray-100 min-h-screen">
+@if (request('embedded'))
+    <main class="p-4 sm:p-6">
+        @if (session('success'))
+            <div class="mb-4 px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">{{ session('success') }}</div>
+        @endif
+        @if (session('error'))
+            <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{{ session('error') }}</div>
+        @endif
+        @yield('content')
+    </main>
+@else
     {{-- Overlay --}}
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/40 z-20 hidden" onclick="toggleSidebar()"></div>
 
@@ -15,22 +28,24 @@
     <aside id="sidebar"
         class="fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-md border-r transform -translate-x-full transition-transform duration-200 flex flex-col">
 
-        <div class="p-5 border-b flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold text-gray-800">Monapps</h1>
-                <p class="text-sm text-gray-500 mt-0.5">{{ auth()->user()->name }}</p>
+        <div class="p-4 border-b">
+            <div id="sidebarMars" style="transition:opacity 0.3s;opacity:0">
+                <img src="/images/logo.png" alt="MARS" class="h-10 w-auto">
             </div>
-            <button onclick="toggleSidebar()" class="text-gray-400 hover:text-gray-600">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
         </div>
 
         <nav class="p-4 space-y-1 flex-1 overflow-y-auto">
             @if (auth()->user()->role === 'guest')
+                <a href="/guest"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('guest') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    Beranda
+                </a>
+                <hr class="border-gray-200 my-2">
                 <a href="/report"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('report') && !request()->is('report/pre-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('report') && !request()->is('report/pre-monitoring') && !request()->is('report/re-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
@@ -42,6 +57,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
                     Laporan Pra-Monitoring
+                </a>
+                <a href="/report/re-monitoring"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('report/re-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    Laporan Re-Monitoring
                 </a>
             @else
                 <a href="/dashboard"
@@ -65,6 +87,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                     </svg>
                     Gerai
+                </a>
+                <a href="/pgs"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('pgs*') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    Data PG
                 </a>
                 {{-- Tugas Dropdown --}}
                 @php
@@ -111,7 +140,7 @@
                 </button>
                 <div id="monitoringSubmenu" class="ml-4 space-y-1 {{ $isMonitoringActive ? '' : 'hidden' }}">
                     <a href="/report"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ request()->is('report') && !request()->is('report/pre-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50' }}">
+                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ request()->is('report') && !request()->is('report/pre-monitoring') && !request()->is('report/re-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50' }}">
                         Laporan Monitoring
                     </a>
                     <a href="/ranking"
@@ -135,29 +164,20 @@
                         Periode Semester
                     </a>
                 </div>
-                @php
-                    $isPraMonitoringActive = request()->is('report/pre-monitoring') || request()->is('ranking/pra-monitoring');
-                @endphp
-                <button onclick="togglePraMonitoring()"
-                    class="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium {{ $isPraMonitoringActive ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                <a href="/report/pre-monitoring"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('report/pre-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                    <span class="flex-1 text-left">Pra Monitoring</span>
-                    <svg id="praMonitoringArrow" class="w-4 h-4 transition-transform {{ $isPraMonitoringActive ? 'rotate-180' : '' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    Laporan Pra-Monitoring
+                </a>
+                <a href="/report/re-monitoring"
+                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('report/re-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
+                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                     </svg>
-                </button>
-                <div id="praMonitoringSubmenu" class="ml-4 space-y-1 {{ $isPraMonitoringActive ? '' : 'hidden' }}">
-                    <a href="/report/pre-monitoring"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ request()->is('report/pre-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50' }}">
-                        Laporan Pra-Monitoring
-                    </a>
-                    <a href="/ranking/pra-monitoring"
-                        class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium {{ request()->is('ranking/pra-monitoring') ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50' }}">
-                        Daftar Nilai Pra-Monitoring
-                    </a>
-                </div>
+                    Laporan Re-Monitoring
+                </a>
                 <a href="/excel-template"
                     class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium {{ request()->is('excel-template') ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50' }}">
                     <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,27 +187,6 @@
                 </a>
             @endif
         </nav>
-
-        {{-- Bottom actions --}}
-        @if (auth()->user()->role !== 'guest')
-            <hr class="border-gray-200 mx-4">
-            <div class="p-4 space-y-1">
-                <a href="/monitoring"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Buat Monitoring
-                </a>
-                <a href="/pra-monitoring"
-                    class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium bg-gray-600 text-white hover:bg-gray-700">
-                    <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Buat Pra-Monitoring
-                </a>
-            </div>
-        @endif
 
         <div class="p-4 border-t">
             <form method="POST" action="/logout">
@@ -205,14 +204,36 @@
     {{-- Main --}}
     <div class="flex-1 flex flex-col min-h-screen">
         {{-- Navbar --}}
-        <header class="bg-white shadow-sm border-b h-14 flex items-center px-4 gap-1 sm:gap-3 shrink-0">
-            <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-800 shrink-0">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                </svg>
+        <header class="sticky top-0 z-30 bg-white shadow-sm border-b h-14 flex items-center px-4 gap-1 sm:gap-3 shrink-0">
+            <button onclick="toggleSidebar()" class="text-gray-600 hover:text-gray-800 shrink-0 relative w-6 h-6" id="burgerBtn">
+                <span class="absolute left-0 top-0 w-full h-[2px] bg-current rounded" id="burgerTop" style="transition:transform 0.3s"></span>
+                <span class="absolute left-0 top-1/2 -mt-[1px] w-full h-[2px] bg-current rounded" id="burgerMid" style="transition:opacity 0.3s"></span>
+                <span class="absolute left-0 bottom-0 w-full h-[2px] bg-current rounded" id="burgerBot" style="transition:transform 0.3s"></span>
             </button>
-            <h1 class="text-lg font-bold text-gray-800">Monapps</h1>
-            <span class="ml-auto text-sm text-gray-500">{{ auth()->user()->name }}</span>
+            <h1 class="text-lg font-bold text-gray-800 truncate transition-all duration-300" id="navbarMars">MARS <small class="text-xs font-normal text-gray-400 hidden sm:inline">(Monitoring Assessment and Reporting System)</small></h1>
+            <div class="relative ml-auto" id="buatLaporanWrapper">
+                <button onclick="toggleBuatLaporan()" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Buat Laporan
+                </button>
+                <div id="buatLaporanDropdown" class="hidden absolute right-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border py-1 z-50">
+                    <a href="/monitoring" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Monitoring
+                    </a>
+                    <a href="/pra-monitoring" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Pra-Monitoring
+                    </a>
+                    <a href="/re-monitoring" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                        Re-Monitoring
+                    </a>
+                </div>
+            </div>
+            <span class="ml-3 text-sm text-gray-500">{{ auth()->user()->name }}</span>
         </header>
 
         {{-- Content --}}
@@ -224,35 +245,94 @@
             @endif
             @if (session('error'))
                 <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-                    {!! session('error') !!}
+                    {{ session('error') }}
                 </div>
             @endif
 
             @yield('content')
         </main>
     </div>
+@endif
 
     {{-- Custom Modal --}}
     <div id="customModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
         <div class="fixed inset-0 bg-black/50" onclick="closeModal()"></div>
-        <div class="relative bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6" onclick="closeModal()">
+        <div class="relative bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6" onclick="event.stopPropagation()">
             <p id="modalMessage" class="text-sm text-gray-700 whitespace-pre-wrap"></p>
             <div id="modalActions" class="mt-5 flex justify-end gap-3"></div>
         </div>
     </div>
 
     <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('-translate-x-full');
-            document.getElementById('sidebarOverlay').classList.toggle('hidden');
+        function toggleSearch(inputId, btn, submitOnCollapse) {
+            var input = document.getElementById(inputId);
+            if (input.classList.contains('w-0')) {
+                input.classList.remove('w-0', 'px-0', 'border-0');
+                input.classList.add('w-48', 'sm:w-64', 'px-3', 'border', 'border-gray-300', 'rounded-lg');
+                input.focus();
+                if (btn) btn.classList.add('hidden');
+            } else {
+                input.classList.add('w-0', 'px-0', 'border-0');
+                input.classList.remove('w-48', 'sm:w-64', 'px-3', 'border', 'border-gray-300', 'rounded-lg');
+                input.value = '';
+                input.dispatchEvent(new Event('input'));
+                if (btn) btn.classList.remove('hidden');
+                if (submitOnCollapse) input.closest('form').submit();
+            }
         }
+
+        document.addEventListener('click', function(e) {
+            document.querySelectorAll('[id^="searchGerai"], [id="searchLaporan"], [id="searchRanking"], [id="searchPraMonitoring"]').forEach(function(input) {
+                var container = input.closest('.relative');
+                if (container && !container.contains(e.target) && !input.classList.contains('w-0') && input.value === '') {
+                    input.classList.add('w-0', 'px-0', 'border-0');
+                    input.classList.remove('w-48', 'sm:w-64', 'px-3', 'border', 'border-gray-300', 'rounded-lg');
+                    var btn = container.querySelector('button');
+                    if (btn) btn.classList.remove('hidden');
+                }
+            });
+        });
+
+        function toggleSidebar() {
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+
+            var top = document.getElementById('burgerTop');
+            var mid = document.getElementById('burgerMid');
+            var bot = document.getElementById('burgerBot');
+            var navbarMars = document.getElementById('navbarMars');
+            var sidebarMars = document.getElementById('sidebarMars');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                top.style.transform = 'none';
+                mid.style.opacity = '1';
+                bot.style.transform = 'none';
+                navbarMars.style.opacity = '1';
+                navbarMars.style.transform = 'translateX(0)';
+                sidebarMars.style.opacity = '0';
+            } else {
+                top.style.transform = 'translateY(11px) rotate(45deg)';
+                mid.style.opacity = '0';
+                bot.style.transform = 'translateY(-11px) rotate(-45deg)';
+                navbarMars.style.opacity = '0';
+                navbarMars.style.transform = 'translateX(20px)';
+                sidebarMars.style.opacity = '1';
+            }
+        }
+        function toggleBuatLaporan() {
+            var dd = document.getElementById('buatLaporanDropdown');
+            dd.classList.toggle('hidden');
+        }
+        document.addEventListener('click', function(e) {
+            var wrapper = document.getElementById('buatLaporanWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('buatLaporanDropdown').classList.add('hidden');
+            }
+        });
         function toggleTugas() {
             document.getElementById('tugasSubmenu').classList.toggle('hidden');
             document.getElementById('tugasArrow').classList.toggle('rotate-180');
-        }
-        function togglePraMonitoring() {
-            document.getElementById('praMonitoringSubmenu').classList.toggle('hidden');
-            document.getElementById('praMonitoringArrow').classList.toggle('rotate-180');
         }
         function toggleMonitoring() {
             document.getElementById('monitoringSubmenu').classList.toggle('hidden');
@@ -287,11 +367,14 @@
 
         document.addEventListener('submit', function(e) {
             var form = e.target;
-            form.querySelectorAll('button[type="submit"]').forEach(function(btn) {
-                btn.disabled = true;
-            });
+            if (form.method && form.method.toUpperCase() === 'GET') return;
+            var submitBtn = e.submitter;
+            if (submitBtn && submitBtn.type === 'submit') {
+                submitBtn.disabled = true;
+                setTimeout(function() { submitBtn.disabled = false; }, 3000);
+            }
         });
     </script>
-    @stack('scripts')
+@stack('scripts')
 </body>
 </html>

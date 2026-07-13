@@ -6,11 +6,6 @@
 <div class="max-w-lg mx-auto">
     {{-- Header --}}
     <div class="flex items-center gap-3 mb-4">
-        <a href="/{{ $prefix }}/{{ $report->id }}/assessment" onclick="event.preventDefault(); var self=this; showConfirm('Kembali tanpa menyimpan? Perubahan tidak akan disimpan.', function(){ window.location.href=self.href; });" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-white shadow-sm">
-            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
         <div class="min-w-0 flex-1">
             <h2 class="text-base font-bold text-gray-900 truncate">{{ $report->gerai->kode_gerai }} - {{ $report->gerai->nama_gerai }}</h2>
             <p class="text-xs text-gray-500">{{ $category->name }}</p>

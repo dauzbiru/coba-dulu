@@ -1,16 +1,16 @@
 @extends('layouts.admin')
 
-@section('title', $title . ' - Monapps')
+@section('title', $title . ' - MARS')
 
 @section('content')
 <div class="bg-white rounded-xl shadow-md overflow-hidden">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <h2 class="text-base sm:text-lg font-semibold text-gray-800">{{ $title }}</h2>
         <div class="flex gap-2">
-            <a href="/tugas/penjelasan-formulir/{{ $formulir }}/import"
+            <button type="button" onclick="document.getElementById('modalImport').classList.remove('hidden')"
                 class="px-3 py-2 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100">
                 Import Excel
-            </a>
+            </button>
             <button type="button" onclick="document.getElementById('modalTambah').classList.remove('hidden')"
                 class="px-3 py-2 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">
                 + Tambah
@@ -50,6 +50,32 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+</div>
+
+{{-- Modal Import Excel --}}
+<div id="modalImport" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-lg mx-4">
+        <h3 class="text-base font-semibold text-gray-800 mb-1">Import Excel</h3>
+        <p class="text-xs text-gray-500 mb-4">Upload file Excel dengan kolom <strong>Kondisi</strong> dan <strong>Penjelasan</strong>.</p>
+        <div class="space-y-4">
+            <a href="/tugas/penjelasan-formulir/{{ $formulir }}/template"
+                class="inline-block px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100">
+                Download Template Excel
+            </a>
+            <form method="POST" action="/tugas/penjelasan-formulir/{{ $formulir }}/import" enctype="multipart/form-data">
+                @csrf
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">File Excel</label>
+                    <input type="file" name="file" accept=".xlsx,.xls" required
+                        class="w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                </div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" onclick="document.getElementById('modalImport').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Batal</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">Import</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
