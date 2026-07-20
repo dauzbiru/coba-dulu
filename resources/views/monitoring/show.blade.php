@@ -5,6 +5,14 @@
 @section('content')
 <div class="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <div>
+        @php
+            $reportListUrl = match($prefix) {
+                'pra-monitoring' => '/report/pra-monitoring',
+                're-monitoring' => '/report/re-monitoring',
+                default => '/report/monitoring',
+            };
+        @endphp
+        <a href="{{ $reportListUrl }}" class="text-sm text-blue-600 hover:underline">&larr; Kembali ke Daftar Laporan</a>
         <h2 class="text-lg sm:text-xl font-bold text-gray-800 mt-1">{{ $report->gerai->kode_gerai }} - {{ $report->gerai->nama_gerai }}</h2>
     </div>
     <div class="flex gap-2">
@@ -69,7 +77,7 @@
 @if ($report->finding)
     <div class="bg-white rounded-xl shadow-md overflow-hidden mb-4">
         <div class="px-4 sm:px-6 py-3 border-b border-gray-200 bg-gray-50">
-            <h3 class="text-sm font-semibold text-gray-700">Temuan Monitoring</h3>
+            <h3 class="text-sm font-semibold text-gray-700">{{ $prefix === 'evaluasi' ? 'Temuan Evaluasi' : 'Temuan Monitoring' }}</h3>
         </div>
         <div class="p-4 sm:p-5 space-y-3">
             @if ($report->finding->major)
@@ -119,7 +127,7 @@
             @php
                 $penjelasanIsi = $report->finding->penjelasan_isi ?? [];
             @endphp
-            @if (!empty(array_filter($penjelasanIsi)))
+            @if ($prefix !== 'pra-monitoring' && !empty(array_filter($penjelasanIsi)))
                 <div class="space-y-2 mb-4">
                     <p class="text-xs font-medium text-gray-500">Penjelasan Formulir 2</p>
                     @foreach ($penjelasanIsi as $i => $teks)
@@ -134,7 +142,7 @@
             @endphp
             @if (!empty(array_filter($penjelasanIsi3)))
                 <div class="space-y-2 mb-4">
-                    <p class="text-xs font-medium text-gray-500">Penjelasan Formulir 3</p>
+                    <p class="text-xs font-medium text-gray-500">Penjelasan</p>
                     @foreach ($penjelasanIsi3 as $itemId => $teks)
                         @if (trim($teks))
                             <p class="text-sm text-gray-800">{{ $loop->iteration }}. {{ $teks }}</p>
@@ -205,6 +213,7 @@
     </div>
 @endforelse
 
+@if ($prefix !== 'evaluasi')
 {{-- FAB Speed Dial --}}
 <div id="fabMenu" class="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3">
     <div id="fabActions" class="flex flex-col items-center gap-3 transition-all duration-200 ease-in-out opacity-0 scale-0 pointer-events-none">
@@ -232,13 +241,16 @@
         @endif
     </div>
     <button id="fabToggle"
-        class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-transform duration-200">
+        style="background:#3B82F6;color:#FFFFFF"
+        class="w-14 h-14 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center transition-transform duration-200">
         <svg id="fabIcon" class="w-7 h-7 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
             <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
         </svg>
     </button>
 </div>
+@endif
 
+@if ($prefix !== 'evaluasi')
 <script>
 var fabToggle = document.getElementById('fabToggle');
 var fabActions = document.getElementById('fabActions');
@@ -268,7 +280,9 @@ document.addEventListener('click', function(e) {
     }
 });
 </script>
+@endif
 
+@if ($prefix !== 'evaluasi')
 {{-- PDF Modal --}}
 <div id="pdfModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
     <div class="fixed inset-0 bg-black/50" onclick="closePdfModal()"></div>
@@ -276,8 +290,8 @@ document.addEventListener('click', function(e) {
         <h3 class="text-base font-semibold text-gray-800 mb-1">Pilih Opsi PDF</h3>
         <p class="text-xs text-gray-500 mb-4">Apakah laporan ini perlu ditandai sebagai revisi?</p>
         <div class="mt-4 flex justify-end gap-3">
-            <button onclick="downloadPdf(0)" class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700">Tidak Revisi</button>
-            <button onclick="downloadPdf(1)" class="px-4 py-2 bg-yellow-500 text-white text-sm font-medium rounded-lg hover:bg-yellow-600">Revisi</button>
+            <button onclick="downloadPdf(1)" style="background:#800000;color:#fff" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90">Revisi</button>
+            <button onclick="downloadPdf(0)" style="background:#15803d;color:#fff" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-90">Tidak Revisi</button>
         </div>
     </div>
 </div>
@@ -305,9 +319,11 @@ document.addEventListener('click', function(e) {
         </div>
     </div>
 </div>
+@endif
 
 @endsection
 
+@if ($prefix !== 'evaluasi')
 @push('scripts')
 <script>
 var geraiName = '{{ $report->gerai->kode_gerai }} - {{ $report->gerai->nama_gerai }}';
@@ -320,7 +336,7 @@ var allGerais = {!! json_encode($allGerais->map(fn($g) => [
     'franchisee' => $g->franchisee ?? '',
     'no_telepon' => $g->no_telepon ?? '',
     'tipe' => 'Gerai',
-])) !!};
+]), JSON_HEX_TAG) !!};
 
 var allPgs = {!! json_encode($allPgs->map(fn($p) => [
     'kode' => '',
@@ -328,7 +344,7 @@ var allPgs = {!! json_encode($allPgs->map(fn($p) => [
     'franchisee' => $p->kota ?? '',
     'no_telepon' => $p->no_telepon ?? '',
     'tipe' => 'PG',
-])) !!};
+]), JSON_HEX_TAG) !!};
 
 var allContacts = allGerais.concat(allPgs);
 
@@ -405,3 +421,4 @@ function sendWa() {
 }
 </script>
 @endpush
+@endif

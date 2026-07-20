@@ -101,8 +101,8 @@ class ItemController extends Controller
     {
         $bobots = $request->input('bobot', []);
         foreach ($bobots as $itemId => $bobot) {
-            Item::where('id', $itemId)->where('category_id', $category->id)
-                ->update(['bobot' => $bobot !== '' ? $bobot : null]);
+            Item::where('id', (int) $itemId)->where('category_id', $category->id)
+                ->update(['bobot' => is_numeric($bobot) && $bobot !== '' ? (float) $bobot : null]);
         }
         return redirect("/categories/{$category->id}")->with('success', 'Bobot berhasil disimpan.');
     }

@@ -41,7 +41,7 @@
                                 @if($item->bobot) <span class="text-xs text-gray-400 font-normal">(bobot {{ $item->bobot }})</span> @endif
                             </h4>
                             <div class="flex gap-1 shrink-0">
-                                <button onclick="openEditItemModal({{ $item->id }})" class="p-1 text-blue-600 hover:text-blue-800 cursor-pointer">
+                                <button onclick="openEditItemModal({{ $item->id }})" class="p-1 cursor-pointer" style="background:#FEF3C7;color:#D97706">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                 </button>
                                 <button type="button" onclick="deleteItem({{ $item->id }}, '{{ $item->name }}')" class="p-1 text-red-500 hover:text-red-700">
@@ -97,7 +97,7 @@
                 </div>
                 <div class="flex gap-2 justify-end">
                     <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Simpan</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80" style="background:#DCFCE7;color:#16A34A">Simpan</button>
                 </div>
             </form>
         </div>
@@ -121,7 +121,7 @@
                     </div>
                     <div class="flex gap-2 justify-end mt-4">
                         <button type="button" onclick="closeBobotModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Batal</button>
-                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Simpan</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80" style="background:#DCFCE7;color:#16A34A">Simpan</button>
                     </div>
                 </form>
             @else
@@ -153,13 +153,13 @@
                         <input id="edit_opsi_input" type="text" placeholder="Tulis opsi..." autocomplete="off"
                             class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();editSaveOpsi();}">
-                        <button type="button" onclick="editSaveOpsi()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+                        <button type="button" onclick="editSaveOpsi()" class="px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
                         <button type="button" onclick="editCancelOpsi()" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
                     </div>
                 </div>
                 <div class="flex gap-2 justify-end">
                     <button type="button" onclick="closeEditItemModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
                 </div>
             </form>
         </div>
@@ -174,7 +174,7 @@ var itemData = {!! json_encode($items->map(fn($i) => [
     'name' => $i->name,
     'bobot' => $i->bobot,
     'criteria' => $i->criteria->map(fn($c) => ['id' => $c->id, 'description' => $c->description]),
-])) !!};
+]), JSON_HEX_TAG) !!};
 var editOpsiItemId = null;
 var sortable = new Sortable(document.getElementById('sortable-items'), {
     handle: '.drag-handle',
@@ -313,7 +313,7 @@ function editInlineOpsi(btn) {
     input.focus();
     var actionsDiv = row.querySelector('.flex.gap-1');
     actionsDiv.innerHTML =
-        '<button type="button" onclick="editSaveInlineOpsi(this)" class="text-green-600 hover:text-green-800 cursor-pointer text-xs font-medium px-1">Simpan</button>' +
+        '<button type="button" onclick="editSaveInlineOpsi(this)" class="cursor-pointer text-xs font-medium px-1" style="background:#DCFCE7;color:#16A34A">Simpan</button>' +
         '<button type="button" onclick="editCancelInlineOpsi(this)" class="text-gray-500 hover:text-gray-700 cursor-pointer text-xs font-medium px-1">Batal</button>';
 }
 

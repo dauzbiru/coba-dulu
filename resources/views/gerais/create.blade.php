@@ -72,9 +72,27 @@
                 @enderror
             </div>
 
+            <div class="mb-4">
+                <label for="nama_kota" class="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
+                <input id="nama_kota" type="text" name="nama_kota" value="{{ old('nama_kota') }}"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                @error('nama_kota')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
+                <label for="area" class="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                <input id="area" type="text" name="area" value="{{ old('area') }}"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                @error('area')
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
             <div class="flex gap-3">
                 <a href="/gerais" class="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">Batal</a>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>

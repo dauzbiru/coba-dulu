@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Result extends Model
 {
-    protected $fillable = ['item_id', 'user_id', 'criterion_id', 'notes', 'monitoring_report_id'];
+    protected $fillable = ['item_id', 'user_id', 'criterion_id', 'notes'];
+
+    protected $hidden = [
+        'reportable_type',
+        'reportable_id',
+    ];
 
     public function item()
     {
@@ -23,8 +28,8 @@ class Result extends Model
         return $this->belongsTo(Criterion::class);
     }
 
-    public function monitoringReport()
+    public function reportable()
     {
-        return $this->belongsTo(MonitoringReport::class);
+        return $this->morphTo();
     }
 }

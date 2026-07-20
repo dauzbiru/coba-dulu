@@ -14,7 +14,7 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
             @error('description') <p class="text-xs text-red-500 mt-1">{{ $message }}</p> @enderror
         </div>
-        <button type="submit" class="w-full py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">Simpan</button>
+        <button type="submit" class="w-full py-2 text-sm font-medium rounded-lg hover:opacity-80" style="background:#DCFCE7;color:#16A34A">Simpan</button>
     </form>
 </div>
 @endsection

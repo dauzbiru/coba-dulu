@@ -10,15 +10,25 @@ use OpenSpout\Common\Entity\Row;
 
 class PenjelasanFormulirController extends Controller
 {
+    private function validateFormulir($formulir): void
+    {
+        if (!in_array((int) $formulir, [2, 3], true)) {
+            abort(404);
+        }
+    }
+
     public function index($formulir)
     {
+        $this->validateFormulir($formulir);
         $items = PenjelasanFormulir::where('formulir', $formulir)->orderBy('sort')->get();
         $title = "Penjelasan Formulir $formulir";
-        return view("tugas.penjelasan-formulir-$formulir", compact('items', 'formulir', 'title'));
+        return view("tugas.penjelasan-formulir-{$formulir}", compact('items', 'formulir', 'title'));
     }
 
     public function store(Request $request, $formulir)
     {
+        $this->validateFormulir($formulir);
+
         $request->validate([
             'kondisi' => 'required|string|max:1000',
             'penjelasan' => 'nullable|string|max:5000',
@@ -33,7 +43,7 @@ class PenjelasanFormulirController extends Controller
             'sort' => $maxSort + 1,
         ]);
 
-        return redirect("/tugas/penjelasan-formulir-$formulir")->with('success', 'Item berhasil ditambahkan.');
+        return redirect("/tugas/penjelasan-formulir-{$formulir}")->with('success', 'Item berhasil ditambahkan.');
     }
 
     public function update(Request $request, PenjelasanFormulir $penjelasanFormulir)
@@ -61,12 +71,15 @@ class PenjelasanFormulirController extends Controller
 
     public function importForm($formulir)
     {
+        $this->validateFormulir($formulir);
         $title = "Penjelasan Formulir $formulir";
         return view('tugas.import', compact('formulir', 'title'));
     }
 
     public function import(Request $request, $formulir)
     {
+        $this->validateFormulir($formulir);
+
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
@@ -99,13 +112,15 @@ class PenjelasanFormulirController extends Controller
 
         $reader->close();
 
-        return redirect("/tugas/penjelasan-formulir-$formulir")->with('success', "$count item berhasil diimport.");
+        return redirect("/tugas/penjelasan-formulir-{$formulir}")->with('success', "$count item berhasil diimport.");
     }
 
     public function template($formulir)
     {
+        $this->validateFormulir($formulir);
+
         $writer = new Writer();
-        $filename = storage_path('app/template-penjelasan-formulir-' . $formulir . '.xlsx');
+        $filename = storage_path("app/template-penjelasan-formulir-{$formulir}.xlsx");
         $writer->openToFile($filename);
 
         $writer->addRow(Row::fromValues(['Kondisi', 'Penjelasan']));

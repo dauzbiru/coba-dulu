@@ -14,26 +14,28 @@
             <p class="text-gray-500 mb-8">Silakan pilih jenis laporan yang akan dibuat</p>
             <div class="flex flex-col gap-4">
                 <a href="/monitoring"
-                    class="block w-full px-6 py-5 bg-blue-600 text-white text-lg font-semibold rounded-xl hover:bg-blue-700 transition">
+                    style="background:#3B82F6;color:#FFFFFF"
+                    class="block w-full px-6 py-5 text-lg font-semibold rounded-xl hover:opacity-80 transition">
                     + Buat Laporan Monitoring
                 </a>
                 <a href="/pra-monitoring"
-                    class="block w-full px-6 py-5 bg-gray-600 text-white text-lg font-semibold rounded-xl hover:bg-gray-700 transition">
+                    style="background:#3B82F6;color:#FFFFFF"
+                    class="block w-full px-6 py-5 text-lg font-semibold rounded-xl hover:opacity-80 transition">
                     + Buat Laporan Pra-Monitoring
                 </a>
             </div>
         </div>
     @else
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div class="bg-white rounded-xl shadow-sm border p-5">
+        <div class="bg-white rounded-xl shadow-md p-5">
             <p class="text-sm text-gray-500">Total Gerai</p>
             <p class="text-3xl font-bold text-gray-800 mt-1">{{ $totalGerai }}</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border p-5">
+        <div class="bg-white rounded-xl shadow-md p-5">
             <p class="text-sm text-gray-500">Monitoring {{ $periodeLabel }}</p>
             <p class="text-3xl font-bold text-blue-600 mt-1">{{ $monitoringPeriode }}</p>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border p-5">
+        <div class="bg-white rounded-xl shadow-md p-5">
             <p class="text-sm text-gray-500">Pra-Monitoring Bulan Ini</p>
             <p class="text-3xl font-bold text-gray-600 mt-1">{{ $praMonitoringBulanIni }}</p>
         </div>
@@ -41,10 +43,10 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {{-- Monitoring Terbaru --}}
-        <div class="bg-white rounded-xl shadow-sm border">
+        <div class="bg-white rounded-xl shadow-md">
             <div class="px-5 py-4 border-b flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Monitoring Terbaru</h2>
-                <a href="/report" class="text-sm text-blue-600 hover:underline">Lihat Semua</a>
+                <a href="/report/monitoring" class="text-sm text-blue-600 hover:underline">Lihat Semua</a>
             </div>
             <div class="p-5">
                 @if ($monitoringTerbaru->isEmpty())
@@ -83,10 +85,10 @@
         </div>
 
         {{-- Pra-Monitoring Terbaru --}}
-        <div class="bg-white rounded-xl shadow-sm border">
+        <div class="bg-white rounded-xl shadow-md">
             <div class="px-5 py-4 border-b flex items-center justify-between">
                 <h2 class="font-semibold text-gray-800">Pra-Monitoring Terbaru</h2>
-                <a href="/report/pre-monitoring" class="text-sm text-blue-600 hover:underline">Lihat Semua</a>
+                <a href="/report/pra-monitoring" class="text-sm text-blue-600 hover:underline">Lihat Semua</a>
             </div>
             <div class="p-5">
                 @if ($praMonitoringTerbaru->isEmpty())
@@ -126,7 +128,7 @@
     </div>
 
     {{-- Grafik Batang --}}
-    <div class="bg-white rounded-xl shadow-sm border p-5 mt-6">
+    <div class="bg-white rounded-xl shadow-md p-5 mt-6">
         <div class="flex items-center justify-between mb-4">
             <div>
                 <h2 class="font-semibold text-gray-800">Grade per Periode</h2>

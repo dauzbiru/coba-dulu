@@ -11,7 +11,7 @@
         </a>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border p-6 mb-6">
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6">
         <h2 class="font-semibold text-gray-800 mb-2">Format Template</h2>
         <div class="text-sm text-gray-600 space-y-1">
             <p>Kolom: <strong>Kode Gerai</strong> | <strong>Nama Gerai</strong> | <strong>Tanggal</strong> (DD-MM-YYYY) | <strong>Petugas</strong> (username) | <strong>Skor</strong></p>
@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-sm border p-6">
+    <div class="bg-white rounded-xl shadow-md p-6">
         <form method="POST" action="/ranking/import" enctype="multipart/form-data">
             @csrf
             <div class="mb-4">

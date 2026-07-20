@@ -57,7 +57,7 @@ class UserController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|alpha_dash|unique:users,username,' . $id,
+            'username' => 'required|string|max:255|alpha_dash|unique:users,username,' . intval($id),
             'password' => 'nullable|string|min:6|confirmed',
             'role' => 'required|in:admin,guest',
         ]);
@@ -65,8 +65,10 @@ class UserController extends Controller
         $user->update([
             'name' => $request->name,
             'username' => $request->username,
-            'role' => $request->role,
         ]);
+
+        $user->role = $request->role;
+        $user->save();
 
         if ($request->filled('password')) {
             $user->update(['password' => Hash::make($request->password)]);

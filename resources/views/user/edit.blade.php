@@ -21,7 +21,7 @@
 
             <div class="mb-4">
                 <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input id="username" type="text" name="username" value="{{ old('username', $user->username) }}" required
+                <input id="username" type="text" name="username" value="{{ old('username', $user->username) }}" required autocomplete="username"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 @error('username')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -32,7 +32,7 @@
 
             <div class="mb-4">
                 <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password Baru <span class="text-gray-400 font-normal">(kosongkan jika tidak diubah)</span></label>
-                <input id="password" type="password" name="password"
+                <input id="password" type="password" name="password" autocomplete="new-password"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 @error('password')
                     <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -41,7 +41,7 @@
 
             <div class="mb-6">
                 <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
-                <input id="password_confirmation" type="password" name="password_confirmation"
+                <input id="password_confirmation" type="password" name="password_confirmation" autocomplete="new-password"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
 
@@ -64,7 +64,7 @@
 
             <div class="flex gap-3">
                 <a href="/user" class="flex-1 text-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium">Batal</a>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>

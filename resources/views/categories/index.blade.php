@@ -41,7 +41,7 @@
                         </p>
                     </a>
                     <div class="flex gap-1 shrink-0">
-                        <button onclick="openEditModal({{ $cat->id }})" class="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg cursor-pointer">
+                        <button onclick="openEditModal({{ $cat->id }})" class="p-1.5 rounded-lg cursor-pointer" style="background:#FEF3C7;color:#D97706">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
                         <form method="POST" action="/categories/{{ $cat->id }}" onsubmit="showConfirm('Hapus kategori ini?', function(){ this.submit(); }.bind(this)); return false;">
@@ -59,7 +59,8 @@
     </div>
 
 <button onclick="openCreateModal()"
-    class="fixed bottom-6 right-6 z-40 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center cursor-pointer">
+    style="background:#3B82F6;color:#FFFFFF"
+    class="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center cursor-pointer">
     <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
         <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
     </svg>
@@ -79,7 +80,7 @@
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -99,7 +100,7 @@
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -109,7 +110,7 @@
 var categoryData = {!! json_encode($categories->map(fn($c) => [
     'id' => $c->id,
     'name' => $c->name,
-])) !!};
+]), JSON_HEX_TAG) !!};
 
 function openCreateModal() {
     document.getElementById('create_name').value = '';

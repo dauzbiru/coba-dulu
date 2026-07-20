@@ -6,7 +6,7 @@
     <title>MARS — Monitoring Assessment and Reporting System</title>
     <link rel="icon" type="image/png" href="/images/biru-favicon.png?v=5">
     <link rel="shortcut icon" href="/favicon.ico?v=5">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/build/app.css">
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
     <div class="text-center w-full max-w-md">

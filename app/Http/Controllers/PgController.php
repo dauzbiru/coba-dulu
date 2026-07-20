@@ -78,8 +78,8 @@ class PgController extends Controller
                 if (empty($nama)) continue;
 
                 Pg::updateOrCreate(
-                    ['nama_pg' => $nama],
-                    ['kota' => $kota, 'no_telepon' => $noTelepon]
+                    ['nama_pg' => $nama, 'kota' => $kota],
+                    ['no_telepon' => $noTelepon]
                 );
                 $count++;
             }
@@ -93,7 +93,7 @@ class PgController extends Controller
     public function exportExcel()
     {
         $writer = new Writer();
-        $filename = storage_path('app/export-pg.xlsx');
+        $filename = storage_path('app/export-pg-' . uniqid('', true) . '.xlsx');
 
         $writer->openToFile($filename);
 
@@ -112,7 +112,7 @@ class PgController extends Controller
     public function template()
     {
         $writer = new Writer();
-        $filename = storage_path('app/template-pg.xlsx');
+        $filename = storage_path('app/template-pg-' . uniqid('', true) . '.xlsx');
 
         $writer->openToFile($filename);
 

@@ -28,7 +28,7 @@
                     <input type="text" name="location" id="location" required readonly
                         class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 bg-gray-50"
                         placeholder="Mendeteksi lokasi...">
-                    <button type="button" id="refreshLocation" class="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 whitespace-nowrap">
+                    <button type="button" id="refreshLocation" style="background:#3B82F6;color:#FFFFFF" class="px-3 py-2 text-sm font-medium rounded-lg hover:opacity-80 whitespace-nowrap">
                         Refresh
                     </button>
                 </div>
@@ -70,7 +70,8 @@
             @endif
 
             <button type="submit"
-                class="w-full px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
+                style="background:#DCFCE7;color:#16A34A"
+                class="w-full px-4 py-2.5 text-sm font-medium rounded-lg hover:opacity-80 active:bg-green-300 active:scale-[0.98] transition-all">
                 Checkin
             </button>
         </form>

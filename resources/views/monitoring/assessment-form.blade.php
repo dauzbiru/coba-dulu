@@ -71,7 +71,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-sm text-gray-500">Belum ada item.</div>
         @endif
 
-        <button type="submit" class="w-full py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm active:bg-blue-700 transition">Simpan</button>
+        <button type="submit" class="w-full py-3 text-sm font-semibold rounded-xl shadow-sm hover:opacity-80 transition" style="background:#DCFCE7;color:#16A34A">Simpan</button>
     </form>
 </div>
 @endsection

@@ -2,44 +2,16 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Reportable;
 use Illuminate\Database\Eloquent\Model;
 
 class MonitoringReport extends Model
 {
-    protected $fillable = ['gerai_id', 'user_id', 'type', 'location', 'nilai', 'grade', 'periode_label', 'checkin_at', 'submit_at'];
+    use Reportable;
 
+    protected $fillable = ['gerai_id', 'user_id', 'type', 'location', 'nilai', 'grade', 'periode_label', 'checkin_at', 'submit_at', 'catatan', 'keterangan'];
     protected $casts = [
         'checkin_at' => 'datetime',
         'submit_at' => 'datetime',
     ];
-
-    public static function gradeFromScore(float $score): string
-    {
-        $bulat = round($score);
-        if ($bulat >= 990) return 'A';
-        if ($bulat >= 975) return 'B';
-        if ($bulat >= 925) return 'C';
-        if ($bulat >= 900) return 'D';
-        return 'E';
-    }
-
-    public function gerai()
-    {
-        return $this->belongsTo(Gerai::class);
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    public function results()
-    {
-        return $this->hasMany(Result::class);
-    }
-
-    public function finding()
-    {
-        return $this->hasOne(MonitoringFinding::class, 'monitoring_report_id');
-    }
 }

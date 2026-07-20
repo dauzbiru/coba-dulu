@@ -32,8 +32,8 @@ class ImportController extends Controller
             foreach ($sheet->getRowIterator() as $rowIndex => $row) {
                 if ($rowIndex === 1) continue;
 
-                $catName = trim($row->cells[0]->getValue() ?? '');
-                $itemName = trim($row->cells[1]->getValue() ?? '');
+                $catName = trim((string) ($row->cells[0]->getValue() ?? ''));
+                $itemName = trim((string) ($row->cells[1]->getValue() ?? ''));
 
                 if (empty($catName) && empty($itemName)) continue;
                 if (empty($catName)) continue;
@@ -41,6 +41,9 @@ class ImportController extends Controller
                 $category = Category::firstOrCreate(['name' => $catName]);
 
                 if (empty($itemName)) continue;
+
+                $exists = $category->items()->where('name', $itemName)->exists();
+                if ($exists) continue;
 
                 $category->items()->create(['name' => $itemName]);
                 $count++;
@@ -55,7 +58,7 @@ class ImportController extends Controller
     public function template()
     {
         $writer = new Writer();
-        $filename = storage_path('app/template-import.xlsx');
+        $filename = storage_path('app/template-import-' . uniqid('', true) . '.xlsx');
 
         $writer->openToFile($filename);
 

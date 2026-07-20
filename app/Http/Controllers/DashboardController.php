@@ -12,8 +12,8 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        if (Auth::user()->role === 'guest') {
-            return redirect('/monitoring');
+        if (!Auth::check() || Auth::user()->role !== 'admin') {
+            return redirect('/guest');
         }
 
         $totalGerai = Gerai::active()->count();
@@ -26,22 +26,24 @@ class DashboardController extends Controller
             $periodeLabel = $latestPeriod->label;
             $monitoringPeriode = MonitoringReport::where('type', 'monitoring')
                 ->where('periode_label', $latestPeriod->label)
+                ->whereNotNull('submit_at')
                 ->count();
         }
 
-        $praMonitoringBulanIni = MonitoringReport::where('type', 'pra-monitoring')
-            ->whereMonth('checkin_at', now()->month)
+        $praMonitoringBulanIni = \App\Models\PraMonitoringReport::whereMonth('checkin_at', now()->month)
             ->whereYear('checkin_at', now()->year)
+            ->whereNotNull('submit_at')
             ->count();
 
         $monitoringTerbaru = MonitoringReport::with('gerai')
             ->where('type', 'monitoring')
+            ->whereNotNull('submit_at')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();
 
-        $praMonitoringTerbaru = MonitoringReport::with('gerai')
-            ->where('type', 'pra-monitoring')
+        $praMonitoringTerbaru = \App\Models\PraMonitoringReport::with('gerai')
+            ->whereNotNull('submit_at')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get();

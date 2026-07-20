@@ -3,20 +3,19 @@
 @section('title', 'Data PG - MARS')
 
 @section('content')
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="bg-white rounded-xl shadow-md">
         <div class="sticky top-0 bg-white z-10 px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
             <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate">Data PG <span class="text-sm font-normal text-gray-400">({{ $pgs->count() }})</span></h2>
-            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-                <div class="relative flex items-center">
-                    <input type="text" id="searchPg" placeholder="Cari PG..."
-                        class="w-0 sm:w-0 px-0 py-2 border-0 text-sm focus:outline-none transition-all duration-200 ease-in-out"
-                        autocomplete="off" oninput="filterPg(this.value)">
-                    <button type="button" onclick="toggleSearch('searchPg', this)" class="shrink-0 p-2 text-gray-500 hover:text-gray-700">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                    </button>
-                </div>
+            <div class="relative flex items-center gap-1 sm:gap-2 shrink-0">
+                <input type="text" id="searchPg" placeholder="Cari PG..."
+                    class="absolute right-full mr-2 w-0 px-0 py-2 border-0 text-sm focus:outline-none transition-all duration-200 ease-in-out rounded-lg opacity-0 pointer-events-none"
+                    autocomplete="off" oninput="filterPg(this.value)">
+                <button type="button" onclick="toggleSearch('searchPg', this)" class="shrink-0 p-2 text-gray-500 hover:text-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </button>
+                <ul id="pgSuggest" class="hidden mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-[9999] max-h-60 overflow-y-auto list-none p-0 w-64"></ul>
             </div>
         </div>
 
@@ -40,10 +39,10 @@
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $pg->no_telepon ?? '-' }}</td>
                             <td class="px-3 sm:px-6 py-3 text-right whitespace-nowrap">
                                 <button onclick="openEditModal({{ $pg->id }})"
-                                    class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 cursor-pointer">Edit</button>
+                                    class="inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#FEF3C7;color:#D97706">Edit</button>
                                 <form method="POST" action="/pgs/{{ $pg->id }}" onsubmit="showConfirm('Hapus data PG ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
                                     @csrf @method('DELETE')
-                                    <button class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100">Hapus</button>
+                                    <button class="inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-lg hover:opacity-80" style="background:#FEE2E2;color:#DC2626">Hapus</button>
                                 </form>
                             </td>
                         </tr>
@@ -76,7 +75,8 @@
         </button>
     </div>
     <button id="fabToggle"
-        class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-transform duration-200">
+        style="background:#3B82F6;color:#FFFFFF"
+        class="w-14 h-14 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center transition-transform duration-200">
         <svg id="fabIcon" class="w-7 h-7 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
             <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
         </svg>
@@ -107,7 +107,7 @@
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -137,7 +137,7 @@
             </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -170,12 +170,14 @@
 </div>
 
 <script>
+var suggestData = {!! json_encode($pgs->map(fn($p) => ['search' => $p->nama_pg, 'primary' => $p->nama_pg, 'secondary' => $p->kota ?? '']), JSON_HEX_TAG) !!};
+
 var pgData = {!! json_encode($pgs->map(fn($p) => [
     'id' => $p->id,
     'nama_pg' => $p->nama_pg,
     'kota' => $p->kota ?? '',
     'no_telepon' => $p->no_telepon ?? '',
-])) !!};
+]), JSON_HEX_TAG) !!};
 
 var fabToggle = document.getElementById('fabToggle');
 var fabActions = document.getElementById('fabActions');
@@ -244,6 +246,32 @@ function filterPg(q) {
         var text = row.textContent.toLowerCase();
         row.style.display = text.includes(q) ? '' : 'none';
     });
+    var list = document.getElementById('pgSuggest');
+    list.innerHTML = '';
+    if (!q) { list.classList.add('hidden'); return; }
+    var matches = suggestData.filter(function(item) {
+        return item.search.toLowerCase().includes(q);
+    }).slice(0, 8);
+    if (matches.length === 0) { list.classList.add('hidden'); return; }
+    matches.forEach(function(item) {
+        var li = document.createElement('li');
+        li.className = 'px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm';
+        li.innerHTML = '<span class="font-medium text-gray-800">' + item.primary + '</span>' + (item.secondary ? '<span class="text-gray-500"> - ' + item.secondary + '</span>' : '');
+        li.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            document.getElementById('searchPg').value = item.primary;
+            list.classList.add('hidden');
+            filterPg(item.primary);
+        });
+        list.appendChild(li);
+    });
+    var btn = document.getElementById('searchPg').parentElement.querySelector('button');
+    positionSuggest(btn, 'pgSuggest');
+    list.classList.remove('hidden');
 }
+
+document.getElementById('searchPg').addEventListener('blur', function() {
+    setTimeout(function() { document.getElementById('pgSuggest').classList.add('hidden'); }, 200);
+});
 </script>
 @endsection

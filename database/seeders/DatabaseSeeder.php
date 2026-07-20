@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'name' => 'Administrator',
             'username' => 'admin',
-            'password' => 'password',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'role' => 'admin',
         ]);
 

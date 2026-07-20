@@ -21,7 +21,7 @@
     <div class="overflow-x-auto">
         <table class="w-full min-w-[600px]">
             <thead>
-                <tr class="bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <tr class="bg-gray-50 text-left text-xs sm:text-sm font-medium text-gray-500 uppercase tracking-wider sticky top-0 z-10">
                     <th class="px-4 sm:px-6 py-3 w-10">No</th>
                     <th class="px-4 sm:px-6 py-3">Kondisi</th>
                     <th class="px-4 sm:px-6 py-3">Penjelasan</th>
@@ -36,10 +36,10 @@
                         <td class="px-4 sm:px-6 py-3 text-sm text-gray-600">{{ $item->penjelasan ?? '-' }}</td>
                         <td class="px-4 sm:px-6 py-3 text-right whitespace-nowrap">
                             <button type="button" onclick="editItem({{ $item->id }}, '{{ addslashes($item->kondisi) }}', '{{ addslashes($item->penjelasan ?? '') }}')"
-                                class="inline-block px-2 py-1 text-xs font-medium text-yellow-600 bg-yellow-50 rounded hover:bg-yellow-100">Edit</button>
+                                class="inline-block px-2 py-1 text-xs font-medium rounded-lg hover:opacity-80" style="background:#FEF3C7;color:#D97706">Edit</button>
                             <form method="POST" action="/tugas/penjelasan-formulir/{{ $item->id }}" onsubmit="showConfirm('Hapus item ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
                                 @csrf @method('DELETE')
-                                <button class="inline-block px-2 py-1 text-xs font-medium text-red-600 bg-red-50 rounded hover:bg-red-100">Hapus</button>
+                                <button class="inline-block px-2 py-1 text-xs font-medium rounded-lg hover:opacity-80" style="background:#FEE2E2;color:#DC2626">Hapus</button>
                             </form>
                         </td>
                     </tr>
@@ -95,7 +95,7 @@
             </div>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="document.getElementById('modalTambah').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Batal</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Simpan</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -117,7 +117,7 @@
             </div>
             <div class="flex gap-2 justify-end">
                 <button type="button" onclick="document.getElementById('modalEdit').classList.add('hidden')" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Batal</button>
-                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700">Simpan</button>
+                <button type="submit" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>

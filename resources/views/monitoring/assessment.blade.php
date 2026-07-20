@@ -39,6 +39,8 @@
                 <p class="text-sm font-bold">{{ $report->gerai->kode_gerai }}</p>
                 <p class="text-xs text-blue-200 mt-0.5">{{ $report->gerai->nama_gerai }}</p>
                 <p class="text-xs text-blue-200 mt-1">{{ $report->checkin_at->format('d-m-Y H:i') }}</p>
+                <p class="text-xs text-blue-200 mt-0.5">{{ str_starts_with($report->gerai->no_telepon ?? '', '62') ? '0' . substr($report->gerai->no_telepon, 2) : ($report->gerai->no_telepon ?? '-') }}</p>
+                <p class="text-xs text-blue-200 mt-0.5">{{ $report->gerai->franchisee }}</p>
             </div>
         </div>
     </div>
@@ -117,7 +119,7 @@
                     @endif
                 </div>
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-800">Temuan Monitoring</h3>
+                    <h3 class="text-sm font-semibold text-gray-800">{{ $prefix === 'evaluasi' ? 'Temuan Evaluasi' : 'Temuan Monitoring' }}</h3>
                     <p class="text-xs {{ $findingComplete ? 'text-green-600' : ($findingPartial ? 'text-yellow-600' : 'text-gray-400') }}">{{ $findingComplete ? 'Sudah terisi semua' : ($findingPartial ? 'Ada yang belum terisi' : 'Major, Minor, Peringatan Awal, TTD') }}</p>
                 </div>
             </div>
@@ -142,7 +144,7 @@
         @endif
         <form method="POST" action="/{{ $prefix }}/{{ $report->id }}/submit" id="submit-form" class="flex-1">
             @csrf
-            <button type="submit" class="w-full py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm active:bg-blue-700 transition">Submit Laporan</button>
+            <button type="submit" style="background:#3B82F6;color:#FFFFFF" class="w-full py-3 text-sm font-semibold rounded-xl shadow-sm hover:opacity-80 transition">Submit Laporan</button>
         </form>
     </div>
 </div>

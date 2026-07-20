@@ -31,7 +31,7 @@
                         <span class="text-sm text-gray-700 truncate">{{ $c->description }}</span>
                     </div>
                     <div class="flex gap-1 shrink-0">
-                        <button onclick="openEditModal({{ $c->id }})" class="p-1 text-blue-600 hover:text-blue-800 cursor-pointer">
+                        <button onclick="openEditModal({{ $c->id }})" class="p-1 cursor-pointer" style="background:#FEF3C7;color:#D97706">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
                         <button type="button" onclick="deleteCriterion({{ $c->id }})" class="p-1 text-red-500 hover:text-red-700">
@@ -48,7 +48,7 @@
             <input id="inlineAddInput" type="text" placeholder="Tulis opsi..." autocomplete="off"
                 class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineOpsi();}">
-            <button onclick="saveInlineOpsi()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+            <button onclick="saveInlineOpsi()" class="px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             <button onclick="cancelInlineOpsi()" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
         </div>
     </div>
@@ -62,7 +62,7 @@
                 <input id="inlineAddInput" type="text" placeholder="Tulis opsi..." autocomplete="off"
                     class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineOpsi();}">
-                <button onclick="saveInlineOpsi()" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+                <button onclick="saveInlineOpsi()" class="px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
                 <button onclick="cancelInlineOpsi()" class="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
             </div>
         </div>
@@ -84,7 +84,7 @@
         </div>
         <div class="flex gap-2 justify-end">
             <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 cursor-pointer">Batal</button>
-            <button id="editSaveBtn" onclick="saveEditOpsi()" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 cursor-pointer">Simpan</button>
+            <button id="editSaveBtn" onclick="saveEditOpsi()" class="px-4 py-2 text-sm font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
         </div>
     </div>
 </div>
@@ -96,7 +96,7 @@
 var criteriaData = {!! json_encode($criteria->map(fn($c) => [
     'id' => $c->id,
     'description' => $c->description,
-])) !!};
+]), JSON_HEX_TAG) !!};
 var sortableEl = document.getElementById('sortable-criteria');
 if (sortableEl) {
     new Sortable(sortableEl, {
@@ -181,7 +181,7 @@ function saveInlineOpsi() {
                     '<span class="text-sm text-gray-700 truncate">' + desc + '</span>' +
                 '</div>' +
                 '<div class="flex gap-1 shrink-0">' +
-                    '<button onclick="openEditModal(' + id + ')" class="p-1 text-blue-600 hover:text-blue-800 cursor-pointer">' +
+                    '<button onclick="openEditModal(' + id + ')" class="p-1 cursor-pointer" style="background:#FEF3C7;color:#D97706">' +
                         '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' +
                     '</button>' +
                     '<button onclick="deleteCriterion(' + id + ')" class="p-1 text-red-500 hover:text-red-700">' +

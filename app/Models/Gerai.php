@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Gerai extends Model
 {
-    protected $fillable = ['kode_gerai', 'nama_gerai', 'franchisee', 'alamat', 'email', 'no_telepon', 'opening_at', 'is_active', 'closed_at'];
+    protected $fillable = ['kode_gerai', 'nama_gerai', 'franchisee', 'alamat', 'email', 'no_telepon', 'opening_at', 'nama_kota', 'area', 'is_active', 'closed_at'];
 
     protected function casts(): array
     {

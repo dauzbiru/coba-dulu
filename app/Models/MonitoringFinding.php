@@ -27,13 +27,18 @@ class MonitoringFinding extends Model
         'penjelasan_isi_3',
     ];
 
+    protected $hidden = [
+        'reportable_type',
+        'reportable_id',
+    ];
+
     protected $casts = [
         'penjelasan_isi' => 'array',
         'penjelasan_isi_3' => 'array',
     ];
 
-    public function report(): BelongsTo
+    public function reportable()
     {
-        return $this->belongsTo(MonitoringReport::class, 'monitoring_report_id');
+        return $this->morphTo();
     }
 }

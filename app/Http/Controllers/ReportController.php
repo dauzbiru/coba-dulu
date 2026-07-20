@@ -7,6 +7,7 @@ use App\Models\MonitoringReport;
 use App\Models\Result;
 use App\Models\SemesterPeriod;
 use App\Models\User;
+use App\Services\ScoreCalculator;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,127 +19,50 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $search = $request->input('search');
-        if ($search) $search = str_replace(['%', '_'], '', $search);
-        $type = 'monitoring';
-        $title = 'Laporan Monitoring';
-        $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
-
-        $query = MonitoringReport::with('gerai', 'user')
-            ->where('type', $type)
-            ->whereNotNull('submit_at');
-
-        if (Auth::user()->role === 'guest') {
-            $query->where('user_id', Auth::id());
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('gerai', function ($g) use ($search) {
-                    $g->where('kode_gerai', 'like', "%{$search}%")
-                      ->orWhere('nama_gerai', 'like', "%{$search}%");
-                })->orWhereHas('user', function ($u) use ($search) {
-                    $u->where('name', 'like', "%{$search}%");
-                });
-            });
-        }
-
-        $reports = $query
-            ->orderBy('checkin_at', 'desc')
-            ->paginate(50)
-            ->through(function ($report) {
-                if ($report->nilai !== null) {
-                    $report->total_score = (float) $report->nilai;
-                } else {
-                    $report->load('results.item.criteria');
-                    $total = 0;
-                    foreach ($report->results as $result) {
-                        $item = $result->item;
-                        if (!$item || !$item->bobot) continue;
-                        $criteriaCount = $item->criteria->count();
-                        if ($criteriaCount <= 1) continue;
-                        $interval = $item->bobot / ($criteriaCount - 1);
-                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                        if ($idx !== false) {
-                            $total += $item->bobot - ($interval * $idx);
-                        }
-                    }
-                    $report->total_score = $total;
-                }
-                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $report->total_score);
-                return $report;
-            });
-
-        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
-
-        return view('report.index', compact('reports', 'title', 'type', 'periods', 'gerais'));
+        return $this->listByType($request, MonitoringReport::class, 'monitoring', 'Laporan Monitoring', [
+            'filterByType' => true,
+        ]);
     }
 
     public function preMonitoring(Request $request)
     {
-        $search = $request->input('search');
-        if ($search) $search = str_replace(['%', '_'], '', $search);
-        $type = 'pra-monitoring';
-        $title = 'Laporan Pra-Monitoring';
-        $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
-
-        $query = MonitoringReport::with('gerai', 'user')
-            ->where('type', $type)
-            ->whereNotNull('submit_at');
-
-        if (Auth::user()->role === 'guest') {
-            $query->where('user_id', Auth::id());
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->whereHas('gerai', function ($g) use ($search) {
-                    $g->where('kode_gerai', 'like', "%{$search}%")
-                      ->orWhere('nama_gerai', 'like', "%{$search}%");
-                })->orWhereHas('user', function ($u) use ($search) {
-                    $u->where('name', 'like', "%{$search}%");
-                });
-            });
-        }
-
-        $reports = $query
-            ->orderBy('checkin_at', 'desc')
-            ->paginate(50)
-            ->through(function ($report) {
-                $report->load('results.item.criteria');
-                $total = 0;
-                foreach ($report->results as $result) {
-                    $item = $result->item;
-                    if (!$item || !$item->bobot) continue;
-                    $criteriaCount = $item->criteria->count();
-                    if ($criteriaCount <= 1) continue;
-                    $interval = $item->bobot / ($criteriaCount - 1);
-                    $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                    if ($idx !== false) {
-                        $total += $item->bobot - ($interval * $idx);
-                    }
-                }
-                $report->total_score = $total;
-                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $total);
-                return $report;
-            });
-
-        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
-
-        return view('report.index', compact('reports', 'title', 'type', 'periods', 'gerais'));
+        return $this->listByType($request, \App\Models\PraMonitoringReport::class, 'pra-monitoring', 'Laporan Pra-Monitoring');
     }
 
     public function reMonitoring(Request $request)
     {
+        return $this->listByType($request, \App\Models\ReMonitoringReport::class, 're-monitoring', 'Laporan Re-Monitoring');
+    }
+
+    public function evaluasi(Request $request)
+    {
+        return $this->listByType($request, \App\Models\EvaluasiReport::class, 'evaluasi', 'Laporan Evaluasi', [
+            'submittedColumn' => 'tanggal',
+            'orderBy' => 'tanggal',
+            'loadResults' => false,
+            'calculateScore' => false,
+        ]);
+    }
+
+    private function listByType(
+        Request $request,
+        string $modelClass,
+        string $type,
+        string $title,
+        array $options = []
+    ): \Illuminate\View\View {
         $search = $request->input('search');
         if ($search) $search = str_replace(['%', '_'], '', $search);
-        $type = 're-monitoring';
-        $title = 'Laporan Re-Monitoring';
+
         $periods = SemesterPeriod::orderBy('year', 'desc')->orderBy('start_month')->get();
 
-        $query = MonitoringReport::with('gerai', 'user')
-            ->where('type', $type)
-            ->whereNotNull('submit_at');
+        $query = $modelClass::with('gerai', 'user');
+
+        if ($options['filterByType'] ?? false) {
+            $query->where('type', $type);
+        }
+
+        $query->whereNotNull($options['submittedColumn'] ?? 'submit_at');
 
         if (Auth::user()->role === 'guest') {
             $query->where('user_id', Auth::id());
@@ -155,25 +79,20 @@ class ReportController extends Controller
             });
         }
 
+        $orderBy = $options['orderBy'] ?? 'checkin_at';
+
         $reports = $query
-            ->orderBy('checkin_at', 'desc')
+            ->when($options['loadResults'] ?? true, fn($q) => $q->with(['results.item.criteria']))
+            ->orderBy($orderBy, 'desc')
             ->paginate(50)
-            ->through(function ($report) {
-                $report->load('results.item.criteria');
-                $total = 0;
-                foreach ($report->results as $result) {
-                    $item = $result->item;
-                    if (!$item || !$item->bobot) continue;
-                    $criteriaCount = $item->criteria->count();
-                    if ($criteriaCount <= 1) continue;
-                    $interval = $item->bobot / ($criteriaCount - 1);
-                    $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                    if ($idx !== false) {
-                        $total += $item->bobot - ($interval * $idx);
-                    }
+            ->through(function ($report) use ($options) {
+                if ($options['calculateScore'] ?? true) {
+                    $report->total_score = ScoreCalculator::calculateForReport($report);
+                    $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $report->total_score);
+                } else {
+                    $report->total_score = null;
+                    $report->grade = null;
                 }
-                $report->total_score = $total;
-                $report->grade = \App\Models\MonitoringReport::gradeFromScore((float) $total);
                 return $report;
             });
 
@@ -576,7 +495,8 @@ class ReportController extends Controller
             return back()->with('error', 'Tidak ada laporan untuk periode ini.');
         }
 
-        $filename = storage_path('app/detail-laporan-' . $request->type . '-' . now()->format('Ymd_His') . '.xlsx');
+        $safeType = preg_replace('/[^a-z\-]/', '', $request->type);
+        $filename = storage_path("app/detail-laporan-{$safeType}-" . now()->format('Ymd_His') . '.xlsx');
         $writer = new Writer();
         $writer->openToFile($filename);
 
@@ -715,7 +635,9 @@ class ReportController extends Controller
         }
 
         $label = $request->type === 'pra-monitoring' || $request->type === 're-monitoring' ? $request->month : $request->periode_label;
-        $zipPath = storage_path("app/laporan-{$request->type}-{$label}-" . now()->format('Y-m-d_H-i') . '.zip');
+        $safeLabel = preg_replace('/[^a-zA-Z0-9\-\s]/', '', $label);
+        $safeType = preg_replace('/[^a-z\-]/', '', $request->type);
+        $zipPath = storage_path("app/laporan-{$safeType}-{$safeLabel}-" . now()->format('Y-m-d_H-i') . '.zip');
         $zip = new ZipArchive;
         if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
             array_map('unlink', glob("$tempDir/*"));
@@ -729,6 +651,91 @@ class ReportController extends Controller
         $zip->close();
 
         array_map('unlink', glob("$tempDir/*"));
+        rmdir($tempDir);
+
+        return response()->download($zipPath)->deleteFileAfterSend(true);
+    }
+
+    public function exportAllPdf(Request $request)
+    {
+        $rules = ['type' => 'required|in:monitoring'];
+        $rules['periode_label'] = 'required|string';
+        $request->validate($rules);
+
+        $reports = MonitoringReport::with('gerai', 'user')
+            ->where('type', $request->type)
+            ->whereNotNull('submit_at')
+            ->where('periode_label', $request->periode_label)
+            ->orderBy('checkin_at')
+            ->get();
+
+        if ($reports->isEmpty()) {
+            return back()->with('error', 'Tidak ada laporan untuk periode ini.');
+        }
+
+        $sofficePath = 'C:\\Program Files\\LibreOffice\\program\\soffice.exe';
+        $hasLibreOffice = false;
+        if (function_exists('exec')) {
+            $checkCmd = 'where soffice 2>nul || (if exist ' . escapeshellarg($sofficePath) . ' (echo found) else (echo notfound))';
+            exec($checkCmd, $checkOutput, $checkCode);
+            $hasLibreOffice = strpos(implode('', $checkOutput), 'found') !== false || $checkCode === 0;
+        }
+
+        if (!$hasLibreOffice) {
+            return back()->with('error', 'LibreOffice tidak tersedia untuk konversi PDF.');
+        }
+
+        $tempDir = storage_path('app/temp-pdf-' . now()->format('Ymd_His'));
+        mkdir($tempDir, 0755, true);
+
+        $controller = app(MonitoringController::class);
+        $generated = [];
+
+        foreach ($reports as $report) {
+            try {
+                $excelPath = $controller->excel($report->id, $tempDir);
+                if (!$excelPath || !file_exists($excelPath)) continue;
+
+                $pdfName = pathinfo(basename($excelPath), PATHINFO_FILENAME) . '.pdf';
+                $pdfPath = $tempDir . '/' . $pdfName;
+                $cmd = escapeshellarg($sofficePath) . ' --headless --convert-to pdf --outdir ' . escapeshellarg($tempDir) . ' ' . escapeshellarg($excelPath) . ' 2>&1';
+                exec($cmd, $output, $returnCode);
+
+                @unlink($excelPath);
+
+                if ($returnCode === 0 && file_exists($pdfPath)) {
+                    $newName = "{$report->gerai->kode_gerai} - {$report->periode_label}.pdf";
+                    $newPath = $tempDir . '/' . $newName;
+                    rename($pdfPath, $newPath);
+                    $generated[] = $newPath;
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        if (empty($generated)) {
+            array_map('unlink', glob("$tempDir/*.pdf"));
+            rmdir($tempDir);
+            return back()->with('error', 'Gagal membuat file PDF.');
+        }
+
+        $label = $request->periode_label;
+        $safeLabel = preg_replace('/[^a-zA-Z0-9\-\s]/', '', $label);
+        $zipPath = storage_path("app/laporan-monitoring-pdf-{$safeLabel}-" . now()->format('Y-m-d_H-i') . '.zip');
+        $zip = new ZipArchive;
+        if ($zip->open($zipPath, ZipArchive::CREATE) !== true) {
+            array_map('unlink', glob("$tempDir/*.pdf"));
+            rmdir($tempDir);
+            return back()->with('error', 'Gagal membuat file ZIP.');
+        }
+
+        foreach ($generated as $file) {
+            $zip->addFile($file, basename($file));
+        }
+        $zip->close();
+
+        array_map('unlink', glob("$tempDir/*.pdf"));
         rmdir($tempDir);
 
         return response()->download($zipPath)->deleteFileAfterSend(true);

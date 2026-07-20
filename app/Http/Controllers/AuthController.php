@@ -21,17 +21,20 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        if (Auth::attempt($request->only('username', 'password'))) {
-            $request->session()->regenerate();
+        $user = User::where('username', $request->username)->first();
 
-            if (Auth::user()->role === 'guest') {
-                return redirect()->to('/guest');
-            }
-
-            return redirect()->to('/dashboard');
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+            return back()->withErrors(['username' => 'Username atau password salah.'])->withInput($request->only('username'));
         }
 
-        return back()->withErrors(['username' => 'Username atau password salah.']);
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        if ($user->role === 'guest') {
+            return redirect()->to('/guest');
+        }
+
+        return redirect()->to('/dashboard');
     }
 
     public function logout(Request $request)

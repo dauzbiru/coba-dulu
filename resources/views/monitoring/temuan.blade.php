@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Temuan Monitoring - ' . $report->gerai->nama_gerai)
+@section('title', ($prefix === 'evaluasi' ? 'Temuan Evaluasi' : 'Temuan Monitoring') . ' - ' . $report->gerai->nama_gerai)
 
 @section('content')
 <div class="max-w-lg mx-auto">
@@ -12,8 +12,7 @@
             </svg>
         </a>
         <div class="min-w-0">
-            <h2 class="text-base font-bold text-gray-900 truncate">{{ $report->gerai->kode_gerai }} - {{ $report->gerai->nama_gerai }}</h2>
-            <p class="text-xs text-gray-500">Temuan Monitoring</p>
+            <h2 class="text-base font-bold text-gray-900 truncate">{{ $prefix === 'evaluasi' ? 'Temuan Evaluasi' : 'Temuan Monitoring' }}</h2>
         </div>
     </div>
 
@@ -85,8 +84,12 @@
                 </div>
                 @endif
                 <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">Peringatan Awal</label>
-                    <textarea name="peringatan_awal" rows="3" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" oninput="this.style.height='';this.style.height=this.scrollHeight+'px'">{{ old('peringatan_awal', $finding?->peringatan_awal ?? '') }}</textarea>
+                    <div class="flex items-center gap-2 mb-1">
+                        <label class="text-xs font-medium text-gray-500">Peringatan Awal</label>
+                        <button type="button" id="btnCekTypo" onclick="cekTypo()" class="text-[10px] font-medium text-purple-600 bg-purple-50 border border-purple-200 rounded px-1.5 py-0.5 hover:bg-purple-100 cursor-pointer transition-colors">Cek Typo</button>
+                        <span id="typoSpinner" class="hidden text-[10px] text-purple-500">Loading...</span>
+                    </div>
+                    <textarea name="peringatan_awal" id="peringatanAwal" rows="3" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" oninput="this.style.height='';this.style.height=this.scrollHeight+'px'">{{ old('peringatan_awal', $finding?->peringatan_awal ?? '') }}</textarea>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Note</label>
@@ -123,7 +126,7 @@
             </div>
         </div>
 
-        @if (!empty($groupLabels))
+        @if (!empty($groupLabels) && $prefix !== 'pra-monitoring')
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
             <button type="button" class="dropdown-header w-full px-4 py-3.5 flex items-center justify-between cursor-pointer active:bg-gray-50 text-left" onclick="toggleDropdown(this)">
                 <h3 class="text-sm font-semibold text-gray-800">Penjelasan Formulir 2</h3>
@@ -148,7 +151,7 @@
         @if (count($penjelasanItems3) > 0 && count($zeroScoreItems) > 0)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
             <button type="button" class="dropdown-header w-full px-4 py-3.5 flex items-center justify-between cursor-pointer active:bg-gray-50 text-left" onclick="toggleDropdown(this)">
-                <h3 class="text-sm font-semibold text-gray-800">Penjelasan Formulir 3</h3>
+                <h3 class="text-sm font-semibold text-gray-800">Penjelasan</h3>
                 <svg class="dropdown-chevron w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
@@ -199,7 +202,7 @@
             </div>
         </div>
 
-        <button type="submit" class="w-full py-3 bg-blue-600 text-white text-sm font-semibold rounded-xl shadow-sm active:bg-blue-700 transition">Simpan</button>
+        <button type="submit" class="w-full py-3 text-sm font-semibold rounded-xl shadow-sm hover:opacity-80 transition" style="background:#DCFCE7;color:#16A34A">Simpan</button>
     </form>
 </div>
 @endsection
@@ -250,6 +253,10 @@ function toggleDropdown(btn) {
     if (body.style.display === 'none') {
         body.style.display = '';
         chevron.style.transform = 'rotate(0deg)';
+        body.querySelectorAll('textarea').forEach(function(ta) {
+            ta.style.height = 'auto';
+            ta.style.height = ta.scrollHeight + 'px';
+        });
     } else {
         body.style.display = 'none';
         chevron.style.transform = 'rotate(-90deg)';
@@ -343,6 +350,117 @@ document.querySelectorAll('textarea').forEach(function(ta) {
     if (ta.scrollHeight > ta.offsetHeight) {
         ta.style.height = ta.scrollHeight + 'px';
     }
+});
+
+function cekTypo() {
+    var ta = document.getElementById('peringatanAwal');
+    var text = ta.value.trim();
+    if (!text) { showAlert('Isi Peringatan Awal terlebih dahulu.'); return; }
+
+    var spinner = document.getElementById('typoSpinner');
+    var btn = document.getElementById('btnCekTypo');
+    spinner.classList.remove('hidden');
+    btn.classList.add('opacity-50', 'pointer-events-none');
+
+    fetch('/ai/check-typo', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ text: text })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        spinner.classList.add('hidden');
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+
+        if (data.error) {
+            showAlert('Error: ' + data.error);
+            return;
+        }
+
+        if (!data.changed) {
+            showAlert('Tidak ditemukan typo dalam teks.');
+            return;
+        }
+
+        showTypoModal(data.original, data.corrected);
+    })
+    .catch(function(err) {
+        spinner.classList.add('hidden');
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+        showAlert('Gagal menghubungi server: ' + err.message);
+    });
+}
+
+function showTypoModal(original, corrected) {
+    var existing = document.getElementById('typoModal');
+    if (existing) existing.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'typoModal';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center';
+    modal.innerHTML =
+        '<div class="fixed inset-0 bg-black/50" onclick="closeTypoModal()"></div>' +
+        '<div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">' +
+            '<h3 class="text-base font-semibold text-gray-800 mb-1">Hasil Koreksi Typo</h3>' +
+            '<p class="text-xs text-gray-500 mb-4">AI menemukan perbaikan untuk teks Anda.</p>' +
+            '<div class="mb-3">' +
+                '<label class="block text-xs text-gray-400 mb-1">Sebelum</label>' +
+                '<div class="px-3 py-2.5 bg-red-50 border border-red-200 rounded-xl text-sm text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto">' + escapeHtml(original) + '</div>' +
+            '</div>' +
+            '<div class="mb-4">' +
+                '<label class="block text-xs text-gray-400 mb-1">Sesudah</label>' +
+                '<div class="px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl text-sm text-gray-700 whitespace-pre-wrap max-h-40 overflow-y-auto">' + escapeHtml(corrected) + '</div>' +
+            '</div>' +
+            '<div class="flex justify-end gap-3">' +
+                '<button onclick="closeTypoModal()" class="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300">Batal</button>' +
+                '<button onclick="applyTypoFix()" class="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Terapkan</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+    window._typoCorrected = corrected;
+}
+
+function applyTypoFix() {
+    var ta = document.getElementById('peringatanAwal');
+    ta.value = window._typoCorrected;
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+    closeTypoModal();
+}
+
+function closeTypoModal() {
+    var m = document.getElementById('typoModal');
+    if (m) m.remove();
+}
+
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+var autoSaveTimer = null;
+var temuanForm = document.querySelector('form[enctype]');
+var temuanFields = temuanForm.querySelectorAll('textarea, input[type=text]');
+temuanFields.forEach(function(el) {
+    el.addEventListener('input', function() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(function() {
+            var fd = new FormData(temuanForm);
+            fd.delete('ttd_petugas');
+            fd.delete('ttd_pimpinan');
+            fd.append('_token', '{{ csrf_token() }}');
+            fetch('/{{ $prefix }}/{{ $report->id }}/temuan', {
+                method: 'POST',
+                body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+        }, 1000);
+    });
 });
 </script>
 @endpush

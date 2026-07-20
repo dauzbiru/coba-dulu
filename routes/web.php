@@ -8,8 +8,11 @@ use App\Http\Controllers\ItemController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CriterionController;
 use App\Http\Controllers\GeraiController;
+use App\Http\Controllers\KomplainController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\PenjelasanFormulirController;
+
+use App\Http\Controllers\SettingsController;
 
 Route::get('/', function () {
     if (Auth::check()) {
@@ -22,6 +25,9 @@ Route::get('/', function () {
 });
 
 Route::get('/guest', function () {
+    if (!Auth::check()) {
+        return redirect('/login');
+    }
     if (Auth::user()->role === 'admin') {
         return redirect('/dashboard');
     }
@@ -29,7 +35,7 @@ Route::get('/guest', function () {
 })->middleware('auth');
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::middleware('auth')->group(function () {
@@ -98,6 +104,25 @@ Route::middleware('auth')->group(function () {
         Route::delete('/gerais/{gerai}', [GeraiController::class, 'destroy']);
         Route::post('/gerais/{gerai}/tutup', [GeraiController::class, 'tutup']);
         Route::post('/gerais/{gerai}/buka', [GeraiController::class, 'buka']);
+        Route::post('/gerais/sync-kota', [GeraiController::class, 'syncKota']);
+        Route::post('/gerais/kota-maps', [GeraiController::class, 'storeKotaMap']);
+        Route::put('/gerais/kota-maps/{kotaMap}', [GeraiController::class, 'updateKotaMap']);
+        Route::delete('/gerais/kota-maps/{kotaMap}', [GeraiController::class, 'destroyKotaMap']);
+
+        // Komplain
+        Route::get('/komplain', [KomplainController::class, 'index']);
+        Route::get('/komplain/pdf/all', [KomplainController::class, 'pdfAll']);
+        Route::get('/komplain/excel/all', [KomplainController::class, 'excelAll']);
+        Route::get('/komplain/{komplain}/pdf', [KomplainController::class, 'pdf']);
+        Route::get('/komplain/{komplain}', [KomplainController::class, 'show']);
+        Route::post('/komplain', [KomplainController::class, 'store']);
+        Route::put('/komplain/{komplain}', [KomplainController::class, 'update']);
+        Route::put('/komplain/{komplain}/penanganan', [KomplainController::class, 'updatePenanganan']);
+        Route::post('/komplain/{komplain}/template', [KomplainController::class, 'saveTemplate']);
+        Route::delete('/komplain/{komplain}', [KomplainController::class, 'destroy']);
+
+        // AI
+        Route::post('/ai/check-typo', [\App\Http\Controllers\AiController::class, 'checkTypo']);
 
         Route::get('/pgs', [\App\Http\Controllers\PgController::class, 'index']);
         Route::post('/pgs', [\App\Http\Controllers\PgController::class, 'store']);
@@ -121,6 +146,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/import/template', [ImportController::class, 'template']);
 
         // Ranking write operations
+        Route::post('/gerai-pendampingan/{report}/mark-sent', [\App\Http\Controllers\RankingController::class, 'markWaSent']);
         Route::post('/ranking/hapus-periode', [\App\Http\Controllers\RankingController::class, 'hapusPeriode']);
         Route::delete('/ranking/{id}', [\App\Http\Controllers\RankingController::class, 'destroy']);
         Route::put('/ranking/{id}', [\App\Http\Controllers\RankingController::class, 'update']);
@@ -135,17 +161,27 @@ Route::middleware('auth')->group(function () {
         Route::post('/excel-template/upload', [\App\Http\Controllers\MonitoringController::class, 'uploadTemplate']);
         Route::delete('/excel-template/delete', [\App\Http\Controllers\MonitoringController::class, 'deleteTemplate']);
 
+        // Template Evaluasi upload/delete
+        Route::post('/excel-template/evaluasi/upload', [\App\Http\Controllers\MonitoringController::class, 'uploadTemplateEvaluasi']);
+        Route::delete('/excel-template/evaluasi/delete', [\App\Http\Controllers\MonitoringController::class, 'deleteTemplateEvaluasi']);
+
         // Dashboard
         Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
         Route::get('/dashboard/chart-data', [\App\Http\Controllers\DashboardController::class, 'chartData']);
+
+        // Settings
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
         // Ranking
         Route::get('/ranking', [\App\Http\Controllers\RankingController::class, 'index']);
         Route::get('/ranking/pra-monitoring', [\App\Http\Controllers\RankingController::class, 'praMonitoring']);
         Route::get('/ranking/peringkat', [\App\Http\Controllers\RankingController::class, 'peringkat']);
         Route::get('/ranking/peringkat/excel', [\App\Http\Controllers\RankingController::class, 'peringkatExcel']);
+        Route::get('/ranking/peringkat/rankings', [\App\Http\Controllers\RankingController::class, 'peringkatRankings']);
         Route::get('/ranking/excel', [\App\Http\Controllers\RankingController::class, 'excel']);
         Route::get('/ranking/performa', [\App\Http\Controllers\RankingController::class, 'performa']);
+        Route::get('/gerai-pendampingan', [\App\Http\Controllers\RankingController::class, 'pendampingan']);
 
         // Report admin-only
         Route::get('/report/pdf', [ReportController::class, 'pdf']);
@@ -155,6 +191,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/report/ambil-data', [ReportController::class, 'ambilData']);
         Route::get('/report/checklist-tidak-sempurna', [ReportController::class, 'checklistTidakSempurna']);
         Route::get('/report/export-all-excel', [ReportController::class, 'exportAllExcel']);
+        Route::get('/report/export-all-pdf', [ReportController::class, 'exportAllPdf']);
         Route::get('/report/excel-detail', [ReportController::class, 'excelDetail']);
 
         // Excel template download (example)
@@ -166,9 +203,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/user', [UserController::class, 'update']);
 
     // Report (with ownership filtering in controller)
-    Route::get('/report', [ReportController::class, 'index']);
-    Route::get('/report/pre-monitoring', [ReportController::class, 'preMonitoring']);
-    Route::get('/report/re-monitoring', [ReportController::class, 'reMonitoring']);
+        Route::get('/report/monitoring', [ReportController::class, 'index']);
+        Route::get('/report/pra-monitoring', [ReportController::class, 'preMonitoring']);
+        Route::get('/report/re-monitoring', [ReportController::class, 'reMonitoring']);
+        Route::get('/report/evaluasi', [ReportController::class, 'evaluasi']);
 
     // Monitoring (with authorizeReport ownership check)
     Route::get('/monitoring', [\App\Http\Controllers\MonitoringController::class, 'selectGerai']);
@@ -216,5 +254,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/re-monitoring/{report}/pdf', [\App\Http\Controllers\ReMonitoringController::class, 'pdf']);
     Route::get('/re-monitoring/{report}/excel', [\App\Http\Controllers\ReMonitoringController::class, 'excel']);
     Route::get('/re-monitoring/{report}', [\App\Http\Controllers\ReMonitoringController::class, 'show']);
-    Route::delete('/re-monitoring/{report}', [\App\Http\Controllers\ReMonitoringController::class, 'destroy']);
-});
+        Route::delete('/re-monitoring/{report}', [\App\Http\Controllers\ReMonitoringController::class, 'destroy']);
+
+        // Evaluasi
+        Route::get('/evaluasi', [\App\Http\Controllers\EvaluasiController::class, 'selectGerai']);
+        Route::get('/evaluasi/checkin/{gerai}', [\App\Http\Controllers\EvaluasiController::class, 'checkinForm']);
+        Route::get('/evaluasi/{report}/assessment', [\App\Http\Controllers\EvaluasiController::class, 'assessment']);
+        Route::post('/evaluasi/{report}/assessment', [\App\Http\Controllers\EvaluasiController::class, 'saveAssessmentForm']);
+        Route::post('/evaluasi/{report}/submit', [\App\Http\Controllers\EvaluasiController::class, 'submit']);
+        Route::post('/evaluasi/{report}/cancel', [\App\Http\Controllers\EvaluasiController::class, 'cancelAssessment']);
+        Route::get('/evaluasi/{report}/temuan', [\App\Http\Controllers\EvaluasiController::class, 'temuanForm']);
+        Route::post('/evaluasi/{report}/temuan', [\App\Http\Controllers\EvaluasiController::class, 'saveTemuan']);
+        Route::get('/evaluasi/{report}/pdf', [\App\Http\Controllers\EvaluasiController::class, 'pdf']);
+        Route::get('/evaluasi/{report}/excel', [\App\Http\Controllers\EvaluasiController::class, 'excel']);
+        Route::get('/evaluasi/{report}', [\App\Http\Controllers\EvaluasiController::class, 'show']);
+        Route::delete('/evaluasi/{report}', [\App\Http\Controllers\EvaluasiController::class, 'destroy']);
+    });

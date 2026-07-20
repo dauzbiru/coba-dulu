@@ -3,21 +3,27 @@
 @section('title', 'Gerai - MARS')
 
 @section('content')
-    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+    <div class="bg-white rounded-xl shadow-md">
         <div class="sticky top-0 bg-white z-10 px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
-            <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate">Data Gerai <span class="text-sm font-normal text-gray-400">({{ $gerais->where('is_active', true)->count() }} aktif, {{ $gerais->where('is_active', false)->count() }} tutup)</span></h2>
-            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-                <div class="relative flex items-center">
+            <div class="flex items-center gap-3">
+                <h2 class="text-base sm:text-lg font-semibold text-gray-800 truncate">Data Gerai</h2>
+                <div id="filterButtons" class="flex items-center gap-2 text-xs font-medium">
+                    <button onclick="filterGeraiByStatus('')" id="filterAll" style="background:#374151;color:#FFFFFF" class="px-2 py-0.5 rounded-full font-medium cursor-pointer transition-colors">All: {{ $gerais->count() }}</button>
+                    <button onclick="filterGeraiByStatus('aktif')" id="filterAktif" style="background:#DCFCE7;color:#16A34A" class="px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-colors">Buka: {{ $gerais->where('is_active', true)->count() }}</button>
+                    <button onclick="filterGeraiByStatus('tutup')" id="filterTutup" style="background:#F3F4F6;color:#4B5563" class="px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-colors">Tutup: {{ $gerais->where('is_active', false)->count() }}</button>
+                    <button onclick="openKotaModal()" style="background:#EEF2FF;color:#4F46E5" class="px-2 py-0.5 rounded-full font-medium cursor-pointer hover:opacity-80 transition-colors">Kota</button>
+                </div>
+            </div>
+            <div class="relative flex items-center gap-1 sm:gap-2 shrink-0">
                     <input type="text" id="searchGerai" placeholder="Cari gerai..."
-                        class="w-0 sm:w-0 px-0 py-2 border-0 text-sm focus:outline-none transition-all duration-200 ease-in-out"
+                        class="absolute right-full mr-2 w-0 px-0 py-2 border-0 text-sm focus:outline-none transition-all duration-200 ease-in-out rounded-lg opacity-0 pointer-events-none"
                         autocomplete="off" oninput="filterGerai(this.value)">
-                    <button type="button" onclick="toggleSearch('searchGerai', this)" class="shrink-0 p-2 text-gray-500 hover:text-gray-700">
+                    <button type="button" onclick="toggleSearch('searchGerai', this); toggleFilterOnMobile()" class="shrink-0 p-2 text-gray-500 hover:text-gray-700">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                         </svg>
                     </button>
-                </div>
-
+                    <ul id="geraiSuggest" class="hidden mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-[9999] max-h-60 overflow-y-auto list-none p-0 w-64"></ul>
             </div>
         </div>
 
@@ -32,13 +38,16 @@
                         <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">Email</th>
                         <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">No Telepon</th>
                         <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">Opening</th>
+                        <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">Lama Beroperasi</th>
+                        <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">Nama Kota</th>
+                        <th class="px-3 sm:px-6 py-3 whitespace-nowrap hidden sm:table-cell">Area</th>
                         <th class="px-3 sm:px-6 py-3 whitespace-nowrap">Status</th>
                         <th class="px-3 sm:px-6 py-3 whitespace-nowrap"></th>
                     </tr>
                 </thead>
                 <tbody id="geraiTableBody" class="divide-y divide-gray-200">
                     @forelse ($gerais as $g)
-                        <tr class="hover:bg-gray-50 {{ !$g->is_active ? 'bg-red-50' : '' }}">
+                        <tr class="hover:bg-gray-50 {{ !$g->is_active ? 'bg-gray-100' : '' }}" data-active="{{ $g->is_active ? '1' : '0' }}">
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm font-medium text-gray-800 whitespace-nowrap">{{ $g->kode_gerai }}</td>
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 truncate max-w-[120px] sm:max-w-none">{{ $g->nama_gerai }}</td>
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $g->franchisee }}</td>
@@ -46,20 +55,44 @@
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $g->email ?? '-' }}</td>
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ str_starts_with($g->no_telepon, '62') ? '0' . substr($g->no_telepon, 2) : ($g->no_telepon ?? '-') }}</td>
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $g->opening_at?->format('d-m-Y') ?? '-' }}</td>
+                            <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">
+                                @if (!$g->is_active)
+                                    -
+                                @elseif ($g->opening_at)
+                                    @php
+                                        $start = $g->opening_at;
+                                        $end = \Carbon\Carbon::now();
+                                        $diff = $start->diff($end);
+                                        $parts = [];
+                                        if ($diff->y > 0) $parts[] = $diff->y . ' thn';
+                                        if ($diff->m > 0) $parts[] = $diff->m . ' bln';
+                                        if ($diff->d > 0 || empty($parts)) $parts[] = $diff->d . ' hr';
+                                    @endphp
+                                    {{ implode(' ', $parts) }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                            <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $g->nama_kota ?? '-' }}</td>
+                            <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm text-gray-600 whitespace-nowrap hidden sm:table-cell">{{ $g->area ?? '-' }}</td>
                             <td class="px-3 sm:px-6 py-3 text-xs sm:text-sm whitespace-nowrap">
                                 @if ($g->is_active)
                                     <span class="text-green-600 font-medium">Aktif</span>
                                 @else
-                                    <span class="text-red-500 font-medium">Tutup</span>
+                                    <span class="text-gray-800 font-medium">Tutup</span>
                                 @endif
                             </td>
                             <td class="px-3 sm:px-6 py-3 text-right whitespace-nowrap">
                                 <button onclick="openEditModal({{ $g->id }})"
-                                    class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 cursor-pointer">Edit</button>
+                                    class="inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer" style="background:#FEF3C7;color:#D97706">Edit</button>
                                 @if ($g->is_active)
                                     <form method="POST" action="/gerais/{{ $g->id }}/tutup" onsubmit="showConfirm('Tutup gerai ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
                                         @csrf
-                                        <button class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100">Tutup</button>
+                                        <button class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Tutup</button>
+                                    </form>
+                                    <form method="POST" action="/gerais/{{ $g->id }}" onsubmit="showConfirm('Hapus gerai ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
+                                        @csrf @method('DELETE')
+                                        <button style="background:#FEE2E2;color:#DC2626" class="inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-lg hover:opacity-80">Hapus</button>
                                     </form>
                                 @else
                                     <form method="POST" action="/gerais/{{ $g->id }}/buka" onsubmit="showConfirm('Buka kembali gerai ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
@@ -68,14 +101,14 @@
                                     </form>
                                     <form method="POST" action="/gerais/{{ $g->id }}" onsubmit="showConfirm('Hapus gerai ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline">
                                         @csrf @method('DELETE')
-                                        <button class="inline-block px-2 sm:px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100">Hapus</button>
+                                        <button style="background:#FEE2E2;color:#DC2626" class="inline-block px-2 sm:px-3 py-1 text-xs font-medium rounded-lg hover:opacity-80">Hapus</button>
                                     </form>
                                 @endif
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-3 sm:px-6 py-8 text-center text-sm text-gray-500">Belum ada data gerai.</td>
+                            <td colspan="11" class="px-3 sm:px-6 py-8 text-center text-sm text-gray-500">Belum ada data gerai.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -85,7 +118,8 @@
 <div id="fabMenu" class="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3">
     <div id="fabActions" class="flex flex-col items-center gap-3 transition-all duration-200 ease-in-out opacity-0 scale-0 pointer-events-none">
         <a href="/gerais/export"
-            class="w-12 h-12 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 flex items-center justify-center text-xs font-medium relative">
+            style="background:#ECFDF5;color:#059669"
+            class="w-12 h-12 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center text-xs font-medium relative">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             <span class="absolute right-full mr-3 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">Download Excel</span>
         </a>
@@ -101,7 +135,8 @@
         </button>
     </div>
     <button id="fabToggle"
-        class="w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 flex items-center justify-center transition-transform duration-200">
+        style="background:#3B82F6;color:#FFFFFF"
+        class="w-14 h-14 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center transition-transform duration-200">
         <svg id="fabIcon" class="w-7 h-7 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
             <path stroke-linecap="round" d="M12 5v14M5 12h14"/>
         </svg>
@@ -117,7 +152,7 @@
             @csrf
             <div class="mb-4">
                 <label for="create_kode_gerai" class="block text-sm font-medium text-gray-700 mb-1">Kode Gerai</label>
-                <input id="create_kode_gerai" type="text" name="kode_gerai" required
+                <input id="create_kode_gerai" type="text" name="kode_gerai" required oninput="checkKotaFromKode()"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="mb-4">
@@ -150,9 +185,24 @@
                 <input id="create_opening_at" type="date" name="opening_at"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            <div id="createKotaFields" class="hidden">
+                <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700 mb-4">
+                    Kode gerai ini belum terdaftar di daftar kota. Isi nama kota dan area di bawah.
+                </div>
+                <div class="mb-4">
+                    <label for="create_nama_kota" class="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
+                    <input id="create_nama_kota" type="text" name="nama_kota"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-4">
+                    <label for="create_area" class="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                    <input id="create_area" type="text" name="area"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -200,9 +250,19 @@
                 <input id="edit_opening_at" type="date" name="opening_at"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+            <div class="mb-4">
+                <label for="edit_nama_kota" class="block text-sm font-medium text-gray-700 mb-1">Nama Kota</label>
+                <input id="edit_nama_kota" type="text" name="nama_kota"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="mb-4">
+                <label for="edit_area" class="block text-sm font-medium text-gray-700 mb-1">Area</label>
+                <input id="edit_area" type="text" name="area"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
             <div class="flex gap-3">
                 <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
-                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium cursor-pointer">Simpan</button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg hover:opacity-80 text-sm font-medium cursor-pointer" style="background:#DCFCE7;color:#16A34A">Simpan</button>
             </div>
         </form>
     </div>
@@ -216,7 +276,7 @@
         <p class="text-sm text-gray-500 mb-4">Upload file Excel untuk import data gerai.</p>
         <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
             <p class="font-medium mb-1">Format file:</p>
-            <p>Kolom A: Kode Gerai<br>Kolom B: Nama Gerai<br>Kolom C: Franchisee<br>Kolom D: Alamat<br>Kolom E: Email<br>Kolom F: No Telepon<br>Kolom G: Opening (format dd-mm-yyyy, opsional)</p>
+            <p>Kolom A: Kode Gerai<br>Kolom B: Nama Gerai<br>Kolom C: Franchisee<br>Kolom D: Alamat<br>Kolom E: Email<br>Kolom F: No Telepon<br>Kolom G: Opening (format dd-mm-yyyy, opsional)<br>Kolom H: Nama Kota (opsional, auto dari kode)<br>Kolom I: Area (opsional, auto dari kode)</p>
             <a href="/gerais/template" class="mt-2 inline-block text-blue-600 hover:underline font-medium">Download template &rarr;</a>
         </div>
         <form method="POST" action="/gerais/import" enctype="multipart/form-data">
@@ -234,7 +294,164 @@
     </div>
 </div>
 
+{{-- Modal Daftar Nama Kota --}}
+<div id="kotaModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeKotaModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-lg mx-4 p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold text-gray-800 mb-2">Daftar Nama Kota & Area</h2>
+        <p class="text-sm text-gray-500 mb-4">Berdasarkan 3 huruf pertama kode gerai.</p>
+
+        <div id="kotaAddForm" class="mb-4 p-3 bg-gray-50 rounded-lg hidden">
+            <div class="flex gap-2 mb-2">
+                <input id="add_kode" type="text" placeholder="Kode" maxlength="10" class="w-20 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase">
+                <input id="add_nama_kota" type="text" placeholder="Nama Kota" class="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input id="add_area" type="text" placeholder="Area" class="w-28 px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="flex gap-2">
+                <button onclick="submitAddKota()" class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 cursor-pointer">Simpan</button>
+                <button onclick="toggleAddKotaForm()" class="px-3 py-1.5 border border-gray-300 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-100 cursor-pointer">Batal</button>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b text-left text-gray-500">
+                        <th class="py-2">Kode</th>
+                        <th class="py-2">Nama Kota</th>
+                        <th class="py-2">Area</th>
+                        <th class="py-2 text-right"></th>
+                    </tr>
+                </thead>
+                <tbody id="kotaTableBody">
+                    @foreach ($kotaMaps as $km)
+                        <tr class="border-b" id="kota-row-{{ $km->id }}">
+                            <td class="py-1.5 font-medium text-gray-800">{{ $km->kode }}</td>
+                            <td class="py-1.5 text-gray-600">
+                                <span class="kota-view">{{ $km->nama_kota }}</span>
+                                <input type="text" value="{{ $km->nama_kota }}" class="kota-edit hidden w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            </td>
+                            <td class="py-1.5 text-gray-600">
+                                <span class="kota-view">{{ $km->area }}</span>
+                                <input type="text" value="{{ $km->area }}" class="kota-edit hidden w-full px-2 py-1 border border-gray-300 rounded text-sm">
+                            </td>
+                            <td class="py-1.5 text-right whitespace-nowrap">
+                                <button onclick="editKotaRow(this)" class="kota-view p-1 text-amber-600 hover:bg-amber-50 rounded cursor-pointer" title="Edit">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                </button>
+                                <button onclick="saveKotaRow(this, {{ $km->id }})" class="kota-edit hidden p-1 text-green-600 hover:bg-green-50 rounded cursor-pointer" title="Simpan">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                </button>
+                                <button onclick="cancelEditKotaRow(this)" class="kota-edit hidden p-1 text-gray-500 hover:bg-gray-100 rounded cursor-pointer" title="Batal">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                                <form method="POST" action="/gerais/kota-maps/{{ $km->id }}" onsubmit="showConfirm('Hapus kota ini?', function(){ this.submit(); }.bind(this)); return false;" class="inline kota-view">
+                                    @csrf @method('DELETE')
+                                    <button class="p-1 text-red-500 hover:bg-red-50 rounded" title="Hapus">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex gap-2 mb-4">
+            <button onclick="toggleAddKotaForm()" id="btnAddKota" style="background:#EEF2FF;color:#4F46E5" class="px-3 py-1.5 text-xs font-medium rounded-lg hover:opacity-80 cursor-pointer">+ Tambah Kota</button>
+            <form method="POST" action="/gerais/sync-kota" class="flex-1">
+                @csrf
+                <button type="submit" class="w-full px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 cursor-pointer">Sync ke Semua Gerai</button>
+            </form>
+        </div>
+        <button onclick="closeKotaModal()" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Tutup</button>
+    </div>
+</div>
+
 <script>
+var kotaMap = {
+    @foreach ($kotaMaps as $km)
+        '{{ $km->kode }}': ['{{ $km->nama_kota }}', '{{ $km->area }}']@if(!$loop->last),@endif
+    @endforeach
+};
+
+function openKotaModal() {
+    document.getElementById('kotaModal').classList.remove('hidden');
+}
+function closeKotaModal() {
+    document.getElementById('kotaModal').classList.add('hidden');
+}
+
+function toggleAddKotaForm() {
+    var form = document.getElementById('kotaAddForm');
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+        document.getElementById('add_kode').value = '';
+        document.getElementById('add_nama_kota').value = '';
+        document.getElementById('add_area').value = '';
+        document.getElementById('add_kode').focus();
+    }
+}
+
+function submitAddKota() {
+    var kode = document.getElementById('add_kode').value.trim();
+    var namaKota = document.getElementById('add_nama_kota').value.trim();
+    var area = document.getElementById('add_area').value.trim();
+    if (!kode || !namaKota || !area) return;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/gerais/kota-maps';
+    form.innerHTML = '@csrf<input type="hidden" name="kode" value="' + kode + '"><input type="hidden" name="nama_kota" value="' + namaKota + '"><input type="hidden" name="area" value="' + area + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function editKotaRow(btn) {
+    var row = btn.closest('tr');
+    row.querySelectorAll('.kota-view').forEach(function(el) { el.classList.add('hidden'); });
+    row.querySelectorAll('.kota-edit').forEach(function(el) { el.classList.remove('hidden'); });
+}
+
+function cancelEditKotaRow(btn) {
+    var row = btn.closest('tr');
+    row.querySelectorAll('.kota-edit').forEach(function(el) { el.classList.add('hidden'); });
+    row.querySelectorAll('.kota-view').forEach(function(el) { el.classList.remove('hidden'); });
+}
+
+function saveKotaRow(btn, id) {
+    var row = btn.closest('tr');
+    var inputs = row.querySelectorAll('.kota-edit');
+    var namaKota = inputs[0].value.trim();
+    var area = inputs[1].value.trim();
+    if (!namaKota || !area) return;
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/gerais/kota-maps/' + id;
+    form.innerHTML = '@csrf<input type="hidden" name="_method" value="PUT"><input type="hidden" name="kode" value="' + row.querySelector('td:first-child').textContent.trim() + '"><input type="hidden" name="nama_kota" value="' + namaKota + '"><input type="hidden" name="area" value="' + area + '">';
+    document.body.appendChild(form);
+    form.submit();
+}
+
+function checkKotaFromKode() {
+    var kode = document.getElementById('create_kode_gerai').value.trim().toUpperCase();
+    var fieldsDiv = document.getElementById('createKotaFields');
+    if (kode.length >= 3) {
+        var prefix = kode.substring(0, 3);
+        if (kotaMap[prefix]) {
+            fieldsDiv.classList.add('hidden');
+            document.getElementById('create_nama_kota').value = '';
+            document.getElementById('create_area').value = '';
+        } else {
+            fieldsDiv.classList.remove('hidden');
+        }
+    } else {
+        fieldsDiv.classList.add('hidden');
+    }
+}
+
 var geraiData = {!! json_encode($gerais->map(fn($g) => [
     'id' => $g->id,
     'kode_gerai' => $g->kode_gerai,
@@ -244,7 +461,9 @@ var geraiData = {!! json_encode($gerais->map(fn($g) => [
     'email' => $g->email ?? '',
     'no_telepon' => $g->no_telepon ?? '',
     'opening_at' => $g->opening_at?->format('Y-m-d') ?? '',
-])) !!};
+    'nama_kota' => $g->nama_kota ?? '',
+    'area' => $g->area ?? '',
+]), JSON_HEX_TAG) !!};
 
 var fabToggle = document.getElementById('fabToggle');
 var fabActions = document.getElementById('fabActions');
@@ -283,6 +502,9 @@ function openCreateModal() {
     document.getElementById('create_email').value = '';
     document.getElementById('create_no_telepon').value = '';
     document.getElementById('create_opening_at').value = '';
+    document.getElementById('create_nama_kota').value = '';
+    document.getElementById('create_area').value = '';
+    document.getElementById('createKotaFields').classList.add('hidden');
     document.getElementById('createModal').classList.remove('hidden');
 }
 function closeCreateModal() {
@@ -301,6 +523,8 @@ function openEditModal(id) {
     document.getElementById('edit_email').value = g.email;
     document.getElementById('edit_no_telepon').value = g.no_telepon;
     document.getElementById('edit_opening_at').value = g.opening_at;
+    document.getElementById('edit_nama_kota').value = g.nama_kota;
+    document.getElementById('edit_area').value = g.area;
     document.getElementById('editModal').classList.remove('hidden');
 }
 function closeEditModal() {
@@ -321,6 +545,83 @@ function filterGerai(q) {
         var text = row.textContent.toLowerCase();
         row.style.display = text.includes(q) ? '' : 'none';
     });
+    var list = document.getElementById('geraiSuggest');
+    list.innerHTML = '';
+    if (!q) { list.classList.add('hidden'); return; }
+    var matches = geraiData.filter(function(g) {
+        return g.kode_gerai.toLowerCase().includes(q) || g.nama_gerai.toLowerCase().includes(q);
+    }).slice(0, 8);
+    if (matches.length === 0) { list.classList.add('hidden'); return; }
+    matches.forEach(function(g) {
+        var li = document.createElement('li');
+        li.className = 'px-3 py-2 cursor-pointer hover:bg-blue-50 text-sm';
+        li.innerHTML = '<span class="font-medium text-gray-800">' + g.kode_gerai + '</span><span class="text-gray-500"> - ' + g.nama_gerai + '</span>';
+        li.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            document.getElementById('searchGerai').value = g.nama_gerai;
+            list.classList.add('hidden');
+            filterGerai(g.nama_gerai);
+        });
+        list.appendChild(li);
+    });
+    var btn = document.getElementById('searchGerai').parentElement.querySelector('button');
+    positionSuggest(btn, 'geraiSuggest');
+    list.classList.remove('hidden');
 }
+
+var currentGeraiStatus = '';
+function filterGeraiByStatus(status) {
+    currentGeraiStatus = status;
+    var rows = document.querySelectorAll('#geraiTableBody tr');
+    rows.forEach(function(row) {
+        if (!status) {
+            row.style.display = '';
+        } else if (status === 'aktif') {
+            row.style.display = row.getAttribute('data-active') === '1' ? '' : 'none';
+        } else if (status === 'tutup') {
+            row.style.display = row.getAttribute('data-active') === '0' ? '' : 'none';
+        }
+    });
+    var allBtn = document.getElementById('filterAll');
+    var aktifBtn = document.getElementById('filterAktif');
+    var tutupBtn = document.getElementById('filterTutup');
+
+    allBtn.style.background = !status ? '#374151' : '#F3F4F6';
+    allBtn.style.color = !status ? '#FFFFFF' : '#4B5563';
+    aktifBtn.style.background = status === 'aktif' ? '#16A34A' : '#DCFCE7';
+    aktifBtn.style.color = status === 'aktif' ? '#FFFFFF' : '#16A34A';
+    tutupBtn.style.background = status === 'tutup' ? '#6B7280' : '#F3F4F6';
+    tutupBtn.style.color = status === 'tutup' ? '#FFFFFF' : '#4B5563';
+}
+
+function toggleFilterOnMobile() {
+    if (window.innerWidth >= 640) return;
+    var filters = document.getElementById('filterButtons');
+    var input = document.getElementById('searchGerai');
+    if (input.classList.contains('w-0')) {
+        filters.classList.remove('hidden');
+    } else {
+        filters.classList.add('hidden');
+    }
+}
+
+document.addEventListener('click', function(e) {
+    if (window.innerWidth >= 640) return;
+    setTimeout(function() {
+        var input = document.getElementById('searchGerai');
+        var filters = document.getElementById('filterButtons');
+        if (input && filters) {
+            if (input.classList.contains('w-0')) {
+                filters.classList.remove('hidden');
+            } else {
+                filters.classList.add('hidden');
+            }
+        }
+    }, 10);
+});
+
+document.getElementById('searchGerai').addEventListener('blur', function() {
+    setTimeout(function() { document.getElementById('geraiSuggest').classList.add('hidden'); }, 200);
+});
 </script>
 @endsection

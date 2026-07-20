@@ -22,7 +22,7 @@ class CriterionController extends Controller
     public function store(Request $request, Item $item)
     {
         $request->validate(['description' => 'required|string|max:255']);
-        $sort = $item->criteria()->max('sort') + 1;
+        $sort = ($item->criteria()->max('sort') ?? 0) + 1;
         $criterion = $item->criteria()->create([
             'description' => $request->description,
             'sort' => $sort,
@@ -66,7 +66,8 @@ class CriterionController extends Controller
     public function batchStore(Request $request, Item $item)
     {
         $descriptions = $request->input('descriptions', []);
-        $sort = $item->criteria()->max('sort') + 1;
+        $sort = ($item->criteria()->max('sort') ?? 0) + 1;
+        $count = 0;
         foreach ($descriptions as $i => $desc) {
             $desc = trim($desc);
             if ($desc === '') continue;
@@ -74,8 +75,10 @@ class CriterionController extends Controller
                 'description' => $desc,
                 'sort' => $sort++,
             ]);
+            $count++;
         }
-        return redirect("/categories/{$item->category_id}")->with('success', count($descriptions) . ' opsi berhasil ditambahkan.');
+        $actualCount = $count ?? 0;
+        return redirect("/categories/{$item->category_id}")->with('success', $actualCount . ' opsi berhasil ditambahkan.');
     }
 
     public function reorder(Request $request, Item $item)

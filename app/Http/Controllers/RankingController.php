@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Gerai;
 use App\Models\MonitoringReport;
+use App\Models\Ranking;
 use App\Models\SemesterPeriod;
 use App\Models\User;
+use App\Services\ScoreCalculator;
 use Illuminate\Http\Request;
 use OpenSpout\Writer\XLSX\Writer;
 use OpenSpout\Common\Entity\Row;
@@ -42,28 +44,13 @@ class RankingController extends Controller
 
         $reports = $query
             ->select('monitoring_reports.*')
+            ->with(['results.item.criteria'])
             ->join('gerais', 'monitoring_reports.gerai_id', '=', 'gerais.id')
             ->orderBy('gerais.kode_gerai')
             ->orderBy('monitoring_reports.submit_at', 'desc')
             ->paginate(50)
             ->through(function ($report) {
-                if ($report->nilai !== null) {
-                    $total = (float) $report->nilai;
-                } else {
-                    $report->load('results.item.criteria');
-                    $total = 0;
-                    foreach ($report->results as $result) {
-                        $item = $result->item;
-                        if (!$item || !$item->bobot) continue;
-                        $criteriaCount = $item->criteria->count();
-                        if ($criteriaCount <= 1) continue;
-                        $interval = $item->bobot / ($criteriaCount - 1);
-                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                        if ($idx !== false) {
-                            $total += $item->bobot - ($interval * $idx);
-                        }
-                    }
-                }
+                $total = ScoreCalculator::calculateForReport($report);
                 return [
                     'id' => $report->id,
                     'gerai' => $report->gerai,
@@ -74,7 +61,7 @@ class RankingController extends Controller
                 ];
             });
 
-        $gerais = \App\Models\Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+        $gerais = Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
 
         return view('ranking.index', compact('reports', 'periodeLabels', 'search', 'gerais'));
     }
@@ -94,7 +81,7 @@ class RankingController extends Controller
         } else {
             $periodeSuffix = 'Semua';
         }
-        $filename = storage_path('app/peringkat-monitoring-' . $periodeSuffix . '.xlsx');
+        $filename = storage_path('app/peringkat-monitoring-' . $periodeSuffix . '-' . uniqid('', true) . '.xlsx');
         $writer->openToFile($filename);
 
         $writer->addRow(Row::fromValues(['Peringkat', 'Gerai', 'Kode', 'Franchisee', 'Petugas', 'Tanggal', 'Periode', 'Skor']));
@@ -139,22 +126,7 @@ class RankingController extends Controller
                 ->get();
 
             foreach ($reports as $report) {
-                if ($report->nilai !== null) {
-                    $total = (float) $report->nilai;
-                } else {
-                    $total = 0;
-                    foreach ($report->results as $result) {
-                        $item = $result->item;
-                        if (!$item || !$item->bobot) continue;
-                        $criteriaCount = $item->criteria->count();
-                        if ($criteriaCount <= 1) continue;
-                        $interval = $item->bobot / ($criteriaCount - 1);
-                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                        if ($idx !== false) {
-                            $total += $item->bobot - ($interval * $idx);
-                        }
-                    }
-                }
+                $total = ScoreCalculator::calculateForReport($report);
                 $chartLabels[] = $report->submit_at->format('d-m-Y');
                 $chartData[] = round($total, 2);
                 $reportData[] = [
@@ -167,13 +139,61 @@ class RankingController extends Controller
         return view('ranking.performa', compact('gerais', 'geraiId', 'geraiNama', 'chartLabels', 'chartData', 'reportData'));
     }
 
+    public function pendampingan()
+    {
+        $now = now();
+        $bulan = $now->month;
+
+        $period = SemesterPeriod::where('year', $now->year)
+            ->where('start_month', '<=', $bulan)
+            ->where('end_month', '>=', $bulan)
+            ->first();
+
+        if (!$period) {
+            $period = SemesterPeriod::where(function ($q) use ($now, $bulan) {
+                    $q->where('year', '<', $now->year)
+                      ->orWhere(function ($q2) use ($now, $bulan) {
+                          $q2->where('year', $now->year)
+                             ->where('end_month', '<', $bulan);
+                      });
+                })
+                ->orderByDesc('year')
+                ->orderByDesc('end_month')
+                ->first();
+        }
+
+        $reports = MonitoringReport::with('gerai', 'user', 'finding')
+            ->whereIn('type', ['monitoring', 'import'])
+            ->whereNotNull('submit_at')
+            ->where('grade', 'C')
+            ->where('user_id', auth()->id())
+            ->where('periode_label', $period->label)
+            ->join('gerais', 'monitoring_reports.gerai_id', '=', 'gerais.id')
+            ->orderBy('monitoring_reports.nilai')
+            ->select('monitoring_reports.*')
+            ->get();
+
+        return view('ranking.pendampingan', compact('reports', 'period'));
+    }
+
+    public function markWaSent($reportId)
+    {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
+        $report = MonitoringReport::findOrFail($reportId);
+        $sent = !$report->wa_sent_at;
+        $report->update(['wa_sent_at' => $sent ? now() : null]);
+        return response()->json(['ok' => true, 'sent' => $sent]);
+    }
+
     public function praMonitoring(Request $request)
     {
         $search = $request->input('search');
         if ($search) $search = str_replace(['%', '_'], '', $search);
 
-        $query = MonitoringReport::with('gerai', 'user')
-            ->where('type', 'pra-monitoring')
+        $query = \App\Models\PraMonitoringReport::with('gerai', 'user')
             ->whereNotNull('submit_at');
 
         if ($search) {
@@ -185,28 +205,13 @@ class RankingController extends Controller
 
         $reports = $query
             ->select('monitoring_reports.*')
+            ->with(['results.item.criteria'])
             ->join('gerais', 'monitoring_reports.gerai_id', '=', 'gerais.id')
             ->orderBy('gerais.kode_gerai')
             ->orderBy('monitoring_reports.submit_at', 'desc')
             ->paginate(50)
             ->through(function ($report) {
-                if ($report->nilai !== null) {
-                    $total = (float) $report->nilai;
-                } else {
-                    $report->load('results.item.criteria');
-                    $total = 0;
-                    foreach ($report->results as $result) {
-                        $item = $result->item;
-                        if (!$item || !$item->bobot) continue;
-                        $criteriaCount = $item->criteria->count();
-                        if ($criteriaCount <= 1) continue;
-                        $interval = $item->bobot / ($criteriaCount - 1);
-                        $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                        if ($idx !== false) {
-                            $total += $item->bobot - ($interval * $idx);
-                        }
-                    }
-                }
+                $total = ScoreCalculator::calculateForReport($report);
                 return [
                     'gerai' => $report->gerai,
                     'petugas' => $report->user?->name ?? '-',
@@ -215,7 +220,8 @@ class RankingController extends Controller
                 ];
             });
 
-        return view('ranking.pra-monitoring', compact('reports', 'search'));
+        $gerais = Gerai::orderBy('kode_gerai')->get(['kode_gerai', 'nama_gerai']);
+        return view('ranking.pra-monitoring', compact('reports', 'search', 'gerais'));
     }
 
     public function peringkat(Request $request)
@@ -233,7 +239,7 @@ class RankingController extends Controller
 
         $writer = new Writer();
         $periodeSuffix = $selectedPeriode ?? 'Semua';
-        $filename = storage_path('app/Peringkat Monitoring Gabungan (' . $periodeSuffix . ').xlsx');
+        $filename = storage_path('app/Peringkat Monitoring Gabungan (' . $periodeSuffix . ')-' . uniqid('', true) . '.xlsx');
         $writer->openToFile($filename);
 
         $headers = ['No', 'Kode Gerai', 'Nama Gerai'];
@@ -250,6 +256,42 @@ class RankingController extends Controller
                 isset($r['p1']['skor']) ? round($r['p1']['skor']) : '-',
                 isset($r['p2']['skor']) ? round($r['p2']['skor']) : '-',
                 isset($r['p3']['skor']) ? round($r['p3']['skor']) : '-',
+            ]));
+        }
+
+        $writer->close();
+        return response()->download($filename)->deleteFileAfterSend(true);
+    }
+
+    public function peringkatRankings(Request $request)
+    {
+        $selectedPeriode = $request->input('periode');
+
+        $query = Ranking::with('gerai');
+        if ($selectedPeriode) {
+            $query->where('periode_label', $selectedPeriode);
+        }
+
+        $rankings = $query->get()
+            ->sortBy(fn($r) => $r->periode_label)
+            ->sortBy(fn($r) => $r->gerai->kode_gerai)
+            ->values();
+
+        $writer = new Writer();
+        $periodeSuffix = $selectedPeriode ?? 'Semua';
+        $filename = storage_path('app/Urutan Peringkat (' . $periodeSuffix . ')-' . uniqid('', true) . '.xlsx');
+        $writer->openToFile($filename);
+
+        $writer->addRow(Row::fromValues(['Periode', 'No', 'Kode Gerai', 'Nama Gerai', 'Peringkat', 'Total Gerai']));
+
+        foreach ($rankings as $r) {
+            $writer->addRow(Row::fromValues([
+                $r->periode_label,
+                $r->rank,
+                $r->gerai->kode_gerai ?? '-',
+                $r->gerai->nama_gerai ?? '-',
+                $r->rank . ' / ' . $r->total,
+                $r->total,
             ]));
         }
 
@@ -301,14 +343,18 @@ class RankingController extends Controller
             ? Gerai::whereIn('id', $geraiIds)->orderBy('kode_gerai')->get()
             : collect();
 
-        $rows = [];
-        foreach ($gerais as $gerai) {
-            $reports = MonitoringReport::where('gerai_id', $gerai->id)
+        $allReports = $geraiIds->isNotEmpty()
+            ? MonitoringReport::whereIn('gerai_id', $geraiIds)
                 ->whereIn('type', ['monitoring', 'import'])
                 ->whereNotNull('submit_at')
                 ->whereIn('periode_label', $periodKeys)
                 ->get()
-                ->keyBy('periode_label');
+                ->groupBy('gerai_id')
+            : collect();
+
+        $rows = [];
+        foreach ($gerais as $gerai) {
+            $reports = $allReports->get($gerai->id, collect())->keyBy('periode_label');
 
             $scores = [];
             foreach ($periodKeys as $k) {
@@ -376,7 +422,7 @@ class RankingController extends Controller
     public function template()
     {
         $writer = new Writer();
-        $filename = storage_path('app/template-import-nilai.xlsx');
+        $filename = storage_path('app/template-import-nilai-' . uniqid('', true) . '.xlsx');
         $writer->openToFile($filename);
 
         $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Tanggal', 'Petugas', 'Skor']));
@@ -466,8 +512,9 @@ class RankingController extends Controller
         }
 
         if (!empty($errors)) {
+            $safeErrors = array_map(fn($e) => e($e), $errors);
             return redirect('/ranking/import')->with('error',
-                'Import dibatalkan. ' . count($errors) . ' error ditemukan:<br>' . implode('<br>', $errors));
+                'Import dibatalkan. ' . count($safeErrors) . ' error ditemukan:<br>' . implode('<br>', $safeErrors));
         }
 
         // All valid — import
@@ -562,23 +609,7 @@ class RankingController extends Controller
         }
 
         $reports = $query->get()->map(function ($report) {
-            if ($report->nilai !== null) {
-                $total = (float) $report->nilai;
-            } else {
-                $report->load('results.item.criteria');
-                $total = 0;
-                foreach ($report->results as $result) {
-                    $item = $result->item;
-                    if (!$item || !$item->bobot) continue;
-                    $criteriaCount = $item->criteria->count();
-                    if ($criteriaCount <= 1) continue;
-                    $interval = $item->bobot / ($criteriaCount - 1);
-                    $idx = $item->criteria->search(fn($c) => $c->id === $result->criterion_id);
-                    if ($idx !== false) {
-                        $total += $item->bobot - ($interval * $idx);
-                    }
-                }
-            }
+            $total = ScoreCalculator::calculateForReport($report);
             return [
                 'id' => $report->id,
                 'gerai' => $report->gerai,
@@ -600,6 +631,10 @@ class RankingController extends Controller
 
     public function update(Request $request, $id)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $request->validate([
             'nilai' => 'required|numeric|min:0|max:1000',
             'checkin_at' => 'required|date',
@@ -625,6 +660,10 @@ class RankingController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $report = MonitoringReport::findOrFail($id);
         $report->results()->delete();
         $report->finding()?->delete();
@@ -635,6 +674,10 @@ class RankingController extends Controller
 
     public function hapusPeriode(Request $request)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $periodeLabel = $request->input('periode_label');
 
         if (!$periodeLabel) {
