@@ -117,12 +117,12 @@
     </div>
 <div id="fabMenu" class="fixed bottom-6 right-6 z-40 flex flex-col items-center gap-3">
     <div id="fabActions" class="flex flex-col items-center gap-3 transition-all duration-200 ease-in-out opacity-0 scale-0 pointer-events-none">
-        <a href="/gerais/export"
+        <button onclick="openDownloadModal()"
             style="background:#ECFDF5;color:#059669"
-            class="w-12 h-12 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center text-xs font-medium relative">
+            class="w-12 h-12 rounded-full shadow-lg hover:opacity-80 flex items-center justify-center text-xs font-medium relative cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             <span class="absolute right-full mr-3 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap">Download Excel</span>
-        </a>
+        </button>
         <button onclick="openImportModal()"
             class="w-12 h-12 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 flex items-center justify-center text-xs font-medium relative cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
@@ -368,6 +368,56 @@
         <button onclick="closeKotaModal()" class="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Tutup</button>
     </div>
 </div>
+
+<div id="downloadModal" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+    <div class="absolute inset-0 bg-black/50" onclick="closeDownloadModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Download Data Gerai</h2>
+        <div class="flex flex-col gap-3">
+            <a href="/gerais/export?status=all"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background:#F3F4F6;color:#374151">
+                    {{ $gerais->count() }}
+                </span>
+                <div class="text-left">
+                    <div class="text-sm font-medium text-gray-800">Semua Gerai</div>
+                    <div class="text-xs text-gray-500">Export semua data gerai</div>
+                </div>
+            </a>
+            <a href="/gerais/export?status=active"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background:#DCFCE7;color:#16A34A">
+                    {{ $gerais->where('is_active', true)->count() }}
+                </span>
+                <div class="text-left">
+                    <div class="text-sm font-medium text-gray-800">Gerai Buka</div>
+                    <div class="text-xs text-gray-500">Export gerai yang aktif saja</div>
+                </div>
+            </a>
+            <a href="/gerais/export?status=closed"
+                class="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm" style="background:#F3F4F6;color:#6B7280">
+                    {{ $gerais->where('is_active', false)->count() }}
+                </span>
+                <div class="text-left">
+                    <div class="text-sm font-medium text-gray-800">Gerai Tutup</div>
+                    <div class="text-xs text-gray-500">Export gerai yang sudah tutup</div>
+                </div>
+            </a>
+        </div>
+        <button onclick="closeDownloadModal()" class="w-full mt-4 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
+    </div>
+</div>
+
+<script>
+function openDownloadModal() {
+    closeFab();
+    document.getElementById('downloadModal').classList.remove('hidden');
+}
+function closeDownloadModal() {
+    document.getElementById('downloadModal').classList.add('hidden');
+}
+</script>
 
 <script>
 var kotaMap = {

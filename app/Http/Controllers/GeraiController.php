@@ -254,8 +254,12 @@ class GeraiController extends Controller
         return redirect('/gerais')->with('success', "Berhasil import $count data gerai.");
     }
 
-    public function exportExcel()
+    public function exportExcel(Request $request)
     {
+        $request->validate([
+            'status' => 'nullable|in:all,active,closed',
+        ]);
+
         $writer = new Writer();
         $filename = storage_path('app/' . uniqid('export-gerai-', true) . '.xlsx');
 
@@ -263,8 +267,15 @@ class GeraiController extends Controller
 
         $writer->addRow(Row::fromValues(['Kode Gerai', 'Nama Gerai', 'Franchisee', 'Alamat', 'Email', 'No Telepon', 'Opening', 'Nama Kota', 'Area']));
 
-        $gerais = Gerai::orderBy('kode_gerai')->get();
-        foreach ($gerais as $g) {
+        $query = Gerai::orderBy('kode_gerai');
+        $status = $request->query('status', 'all');
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'closed') {
+            $query->where('is_active', false);
+        }
+
+        foreach ($query->get() as $g) {
             $writer->addRow(Row::fromValues([$g->kode_gerai, $g->nama_gerai, $g->franchisee, $g->alamat, $g->email, $g->no_telepon, $g->opening_at?->format('d-m-Y'), $g->nama_kota, $g->area]));
         }
 
