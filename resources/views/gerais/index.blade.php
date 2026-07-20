@@ -374,60 +374,105 @@
     <div class="relative bg-white rounded-xl shadow-lg w-full max-w-sm mx-4 p-6">
         <h2 class="text-lg font-bold text-gray-800 mb-4">Download Data Gerai</h2>
         <div class="flex flex-col gap-3">
-            <a href="/gerais/export?status=all" onclick="highlightDownload(this)"
-                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 active:bg-blue-100 active:scale-[0.98] transition-all duration-150">
-                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold" style="background:#F3F4F6;color:#374151">
+            <button type="button" onclick="selectDownload(this, 'all')"
+                data-status="all"
+                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-150 cursor-pointer text-left">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style="background:#F3F4F6;color:#374151">
                     {{ $gerais->count() }}
                 </span>
-                <div class="text-left flex-1">
+                <div class="flex-1">
                     <div class="text-sm font-medium text-gray-800">Semua Gerai</div>
                     <div class="text-xs text-gray-500">Export semua data gerai</div>
                 </div>
-                <svg class="w-4 h-4 text-gray-400 opacity-0 transition-opacity duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3"/></svg>
-            </a>
-            <a href="/gerais/export?status=active" onclick="highlightDownload(this)"
-                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-green-400 hover:bg-green-50 active:bg-green-100 active:scale-[0.98] transition-all duration-150">
-                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold" style="background:#DCFCE7;color:#16A34A">
+                <div class="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0 dl-radio"></div>
+            </button>
+            <button type="button" onclick="selectDownload(this, 'active')"
+                data-status="active"
+                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-green-300 hover:bg-green-50 transition-all duration-150 cursor-pointer text-left">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style="background:#DCFCE7;color:#16A34A">
                     {{ $gerais->where('is_active', true)->count() }}
                 </span>
-                <div class="text-left flex-1">
+                <div class="flex-1">
                     <div class="text-sm font-medium text-gray-800">Gerai Buka</div>
                     <div class="text-xs text-gray-500">Export gerai yang aktif saja</div>
                 </div>
-                <svg class="w-4 h-4 text-gray-400 opacity-0 transition-opacity duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3"/></svg>
-            </a>
-            <a href="/gerais/export?status=closed" onclick="highlightDownload(this)"
-                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 active:bg-gray-200 active:scale-[0.98] transition-all duration-150">
-                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold" style="background:#F3F4F6;color:#6B7280">
+                <div class="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0 dl-radio"></div>
+            </button>
+            <button type="button" onclick="selectDownload(this, 'closed')"
+                data-status="closed"
+                class="dl-option flex items-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-all duration-150 cursor-pointer text-left">
+                <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0" style="background:#F3F4F6;color:#6B7280">
                     {{ $gerais->where('is_active', false)->count() }}
                 </span>
-                <div class="text-left flex-1">
+                <div class="flex-1">
                     <div class="text-sm font-medium text-gray-800">Gerai Tutup</div>
                     <div class="text-xs text-gray-500">Export gerai yang sudah tutup</div>
                 </div>
-                <svg class="w-4 h-4 text-gray-400 opacity-0 transition-opacity duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3"/></svg>
-            </a>
+                <div class="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0 dl-radio"></div>
+            </button>
         </div>
-        <button onclick="closeDownloadModal()" class="w-full mt-4 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
+        <a id="dlDownloadBtn" href="#" class="block w-full mt-4 px-4 py-2 rounded-lg text-sm font-medium text-center transition-colors duration-150 pointer-events-none"
+           style="background:#E5E7EB;color:#9CA3AF;">Pilih salah satu</a>
+        <button onclick="closeDownloadModal()" class="w-full mt-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium cursor-pointer">Batal</button>
     </div>
 </div>
 
 <script>
+var selectedDlStatus = null;
 function openDownloadModal() {
     closeFab();
+    selectedDlStatus = null;
+    resetDownloadModal();
     document.getElementById('downloadModal').classList.remove('hidden');
 }
 function closeDownloadModal() {
     document.getElementById('downloadModal').classList.add('hidden');
 }
-function highlightDownload(el) {
+function resetDownloadModal() {
+    var btn = document.getElementById('dlDownloadBtn');
+    btn.href = '#';
+    btn.style.background = '#E5E7EB';
+    btn.style.color = '#9CA3AF';
+    btn.classList.add('pointer-events-none');
+    btn.textContent = 'Pilih salah satu';
     document.querySelectorAll('.dl-option').forEach(function(opt) {
-        opt.classList.remove('border-blue-500', 'bg-blue-50', 'border-green-500', 'bg-green-50');
-        opt.querySelector('svg').classList.add('opacity-0');
+        opt.style.borderColor = '#E5E7EB';
+        opt.style.backgroundColor = '';
+        var radio = opt.querySelector('.dl-radio');
+        radio.style.borderColor = '#D1D5DB';
+        radio.style.backgroundColor = '';
+        radio.innerHTML = '';
     });
-    el.classList.add('border-blue-500', 'bg-blue-50');
-    el.querySelector('svg').classList.remove('opacity-0');
-    el.querySelector('svg').classList.add('opacity-100');
+}
+function selectDownload(el, status) {
+    var colors = {
+        'all':    { border: '#3B82F6', bg: '#EFF6FF', radio: '#3B82F6' },
+        'active': { border: '#22C55E', bg: '#F0FDF4', radio: '#22C55E' },
+        'closed': { border: '#6B7280', bg: '#F9FAFB', radio: '#6B7280' }
+    };
+    document.querySelectorAll('.dl-option').forEach(function(opt) {
+        opt.style.borderColor = '#E5E7EB';
+        opt.style.backgroundColor = '';
+        var radio = opt.querySelector('.dl-radio');
+        radio.style.borderColor = '#D1D5DB';
+        radio.style.backgroundColor = '';
+        radio.innerHTML = '';
+    });
+    var c = colors[status];
+    el.style.borderColor = c.border;
+    el.style.backgroundColor = c.bg;
+    var radio = el.querySelector('.dl-radio');
+    radio.style.borderColor = c.radio;
+    radio.style.backgroundColor = c.radio;
+    radio.innerHTML = '<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin:-2px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+
+    var btn = document.getElementById('dlDownloadBtn');
+    btn.href = '/gerais/export?status=' + status;
+    btn.style.background = '#2563EB';
+    btn.style.color = '#FFFFFF';
+    btn.classList.remove('pointer-events-none');
+    btn.textContent = 'Download';
+    selectedDlStatus = status;
 }
 </script>
 
