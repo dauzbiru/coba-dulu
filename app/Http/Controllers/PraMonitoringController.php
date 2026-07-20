@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use App\Services\ExcelXmlHelpers;
 
 class PraMonitoringController extends MonitoringController
 {
@@ -53,66 +54,10 @@ class PraMonitoringController extends MonitoringController
 
     protected function fillSheet1Custom(DOMDocument $dom1, DOMXPath $xpath1, string $ns, float $totalScore, string $grade, string $kesimpulanText, int $wrapStyleIdx = 0): void
     {
-        $setInlineStr = function($ref, $text) use ($xpath1, $dom1, $ns) {
-            $cells = $xpath1->query("//s:c[@r='$ref']");
-            if ($cells->length > 0) {
-                $cell = $cells->item(0);
-                $cell->setAttribute('t', 'inlineStr');
-                foreach (['v', 'is'] as $tag) {
-                    $existing = $cell->getElementsByTagNameNS($ns, $tag)->item(0);
-                    if ($existing) $cell->removeChild($existing);
-                }
-                $is = $dom1->createElementNS($ns, 'is');
-                $t = $dom1->createElementNS($ns, 't');
-                $t->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
-                $t->appendChild($dom1->createTextNode($text));
-                $is->appendChild($t);
-                $cell->appendChild($is);
-            }
-        };
-
-        $setNumber = function($ref, $value) use ($xpath1, $dom1, $ns) {
-            $cells = $xpath1->query("//s:c[@r='$ref']");
-            if ($cells->length > 0) {
-                $cell = $cells->item(0);
-                foreach (['v', 'is', 'f'] as $tag) {
-                    $existing = $cell->getElementsByTagNameNS($ns, $tag)->item(0);
-                    if ($existing) $cell->removeChild($existing);
-                }
-                $cell->removeAttribute('t');
-                $v = $dom1->createElementNS($ns, 'v');
-                $v->textContent = (string) $value;
-                $cell->appendChild($v);
-            }
-        };
-
-        $makeRun = function($text, $bold = false) use ($dom1, $ns) {
-            $r = $dom1->createElementNS($ns, 'r');
-            $rPr = $dom1->createElementNS($ns, 'rPr');
-            if ($bold) {
-                $rPr->appendChild($dom1->createElementNS($ns, 'b'));
-            }
-            $rFont = $dom1->createElementNS($ns, 'rFont');
-            $rFont->setAttribute('val', 'Arimo');
-            $rPr->appendChild($rFont);
-            $sz = $dom1->createElementNS($ns, 'sz');
-            $sz->setAttribute('val', '12');
-            $rPr->appendChild($sz);
-            $color = $dom1->createElementNS($ns, 'color');
-            $color->setAttribute('rgb', 'FF000000');
-            $rPr->appendChild($color);
-            $r->appendChild($rPr);
-            $t = $dom1->createElementNS($ns, 't');
-            $t->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
-            $t->appendChild($dom1->createTextNode($text));
-            $r->appendChild($t);
-            return $r;
-        };
-
         // E32 = total score, E33 = 975, E34 = grade letter
-        $setNumber('E32', round($totalScore));
-        $setNumber('E33', 975);
-        $setInlineStr('E34', $grade);
+        static::xmlSetNumber($xpath1, $dom1, $ns, 'E32', round($totalScore));
+        static::xmlSetNumber($xpath1, $dom1, $ns, 'E33', 975);
+        static::xmlSetInlineStr($xpath1, $dom1, $ns, 'E34', $grade);
 
         // A38: "Gerai masuk dalam Grade [X] dengan kategori:" (Grade bold)
         $cells38 = $xpath1->query("//s:c[@r='A38']");
@@ -124,9 +69,9 @@ class PraMonitoringController extends MonitoringController
                 if ($existing) $cell->removeChild($existing);
             }
             $is = $dom1->createElementNS($ns, 'is');
-            $is->appendChild($makeRun('Gerai masuk dalam '));
-            $is->appendChild($makeRun("Grade {$grade}", true));
-            $is->appendChild($makeRun(' dengan kategori:'));
+            $is->appendChild(static::xmlMakeRun($dom1, $ns, 'Gerai masuk dalam '));
+            $is->appendChild(static::xmlMakeRun($dom1, $ns, "Grade {$grade}", true));
+            $is->appendChild(static::xmlMakeRun($dom1, $ns, ' dengan kategori:'));
             $cell->appendChild($is);
         }
 
@@ -184,42 +129,9 @@ class PraMonitoringController extends MonitoringController
     protected function fillSheet3Custom(DOMDocument $dom3, DOMXPath $xpath3, string $ns3, float $totalScore, string $tanggalLengkap): void
     {
         // Fill datachart: Row1= tanggal lengkap, Row2= score, Row3= 975
-        $setInlineStr = function($ref, $text) use ($xpath3, $dom3, $ns3) {
-            $cells = $xpath3->query("//s:c[@r='$ref']");
-            if ($cells->length > 0) {
-                $cell = $cells->item(0);
-                $cell->setAttribute('t', 'inlineStr');
-                foreach (['v', 'is'] as $tag) {
-                    $existing = $cell->getElementsByTagNameNS($ns3, $tag)->item(0);
-                    if ($existing) $cell->removeChild($existing);
-                }
-                $is = $dom3->createElementNS($ns3, 'is');
-                $t = $dom3->createElementNS($ns3, 't');
-                $t->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
-                $t->appendChild($dom3->createTextNode($text));
-                $is->appendChild($t);
-                $cell->appendChild($is);
-            }
-        };
-
-        $setNumber = function($ref, $value) use ($xpath3, $dom3, $ns3) {
-            $cells = $xpath3->query("//s:c[@r='$ref']");
-            if ($cells->length > 0) {
-                $cell = $cells->item(0);
-                $cell->removeAttribute('t');
-                foreach (['v', 'is', 'f'] as $tag) {
-                    $existing = $cell->getElementsByTagNameNS($ns3, $tag)->item(0);
-                    if ($existing) $cell->removeChild($existing);
-                }
-                $v = $dom3->createElementNS($ns3, 'v');
-                $v->textContent = (string) $value;
-                $cell->appendChild($v);
-            }
-        };
-
-        $setInlineStr('B1', $tanggalLengkap);
-        $setNumber('B2', round($totalScore));
-        $setNumber('B3', 975);
+        static::xmlSetInlineStr($xpath3, $dom3, $ns3, 'B1', $tanggalLengkap);
+        static::xmlSetNumber($xpath3, $dom3, $ns3, 'B2', round($totalScore));
+        static::xmlSetNumber($xpath3, $dom3, $ns3, 'B3', 975);
     }
 
     protected function onPhase3Cell(string $sheetName, int $ssIndex, array $ssIndexText, array $ssIndexScore, DOMElement $cell, DOMDocument $dom, array $items): void
@@ -339,60 +251,43 @@ class PraMonitoringController extends MonitoringController
             }
 
             $infoRn = $paRn + 1;
-            $makeBRow = function($text) use ($dom2, $ns2, &$infoRn) {
-                $rn = $infoRn++;
-                $row = $dom2->createElementNS($ns2, 'row');
-                $row->setAttribute('r', (string)$rn);
-                $row->setAttribute('spans', '1:15');
-                $cell = $dom2->createElementNS($ns2, 'c');
-                $cell->setAttribute('r', 'B' . $rn);
-                $cell->setAttribute('t', 'inlineStr');
-                $cell->setAttribute('s', '1');
-                $is = $dom2->createElementNS($ns2, 'is');
-                $t = $dom2->createElementNS($ns2, 't');
-                $t->setAttributeNS('http://www.w3.org/XML/1998/namespace', 'xml:space', 'preserve');
-                $t->appendChild($dom2->createTextNode($text));
-                $is->appendChild($t);
-                $cell->appendChild($is);
-                $row->appendChild($cell);
-                return $row;
-            };
+            // (makeBRow via ExcelXmlHelpers trait)
 
             $infoRows = [];
             $pengawas = $finding->pengawas ?? '';
             if ($pengawas !== '') {
                 foreach (preg_split('/\r?\n/', $pengawas) as $line) {
-                    if (trim($line) !== '') $infoRows[] = $makeBRow(trim($line));
+                    if (trim($line) !== '') $infoRows[] = static::xmlMakeBRow($dom2, $ns2, trim($line), $infoRn);
                 }
             }
             $aj = $finding->rata_rata_aj ?? '';
             if ($aj !== '') {
-                $infoRows[] = $makeBRow('Rerata AJ ± ' . $aj . ' gln/hr');
+                $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Rerata AJ ± ' . $aj . ' gln/hr', $infoRn);
             }
             $mo = $finding->mesin_ozon ?? '';
             if ($mo !== '') {
-                $infoRows[] = $makeBRow('MO: ' . $mo);
+                $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'MO: ' . $mo, $infoRn);
             }
-            $infoRows[] = $makeBRow('');
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, '', $infoRn);
             $paLines = $findingLines['peringatan_awal'] ?? [];
             foreach ($paLines as $line) {
-                if (trim($line) !== '') $infoRows[] = $makeBRow($line);
+                if (trim($line) !== '') $infoRows[] = static::xmlMakeBRow($dom2, $ns2, $line, $infoRn);
             }
             $noteContent = $finding->note ?? '';
             if ($noteContent !== '') {
-                $infoRows[] = $makeBRow('');
-                $infoRows[] = $makeBRow('Note:');
+                $infoRows[] = static::xmlMakeBRow($dom2, $ns2, '', $infoRn);
+                $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Note:', $infoRn);
                 foreach (preg_split('/\r?\n/', $noteContent) as $line) {
-                    if (trim($line) !== '') $infoRows[] = $makeBRow(trim($line));
+                    if (trim($line) !== '') $infoRows[] = static::xmlMakeBRow($dom2, $ns2, trim($line), $infoRn);
                 }
             }
-            $infoRows[] = $makeBRow('');
-            $infoRows[] = $makeBRow('Checklist tampilan gerai:');
-            $infoRows[] = $makeBRow('Kondisi cat: ' . ($finding->kondisi_cat ?: 'Baik'));
-            $infoRows[] = $makeBRow('Kondisi awning: ' . ($finding->kondisi_awning ?: 'Baik'));
-            $infoRows[] = $makeBRow('Kondisi vinyl reklame dinding/jalan: ' . ($finding->kondisi_vinyl ?: 'Baik'));
-            $infoRows[] = $makeBRow('Kondisi stiker kaca: ' . ($finding->kondisi_stiker_kaca ?: 'Baik'));
-            $infoRows[] = $makeBRow('');
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, '', $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Checklist tampilan gerai:', $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Kondisi cat: ' . ($finding->kondisi_cat ?: 'Baik'), $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Kondisi awning: ' . ($finding->kondisi_awning ?: 'Baik'), $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Kondisi vinyl reklame dinding/jalan: ' . ($finding->kondisi_vinyl ?: 'Baik'), $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, 'Kondisi stiker kaca: ' . ($finding->kondisi_stiker_kaca ?: 'Baik'), $infoRn);
+            $infoRows[] = static::xmlMakeBRow($dom2, $ns2, '', $infoRn);
 
             foreach ($infoRows as $row) {
                 $sheetData->insertBefore($row, $noteRow);
