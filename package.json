@@ -1,4 +1,8 @@
 {
     "private": true,
-    "type": "module"
+    "type": "module",
+    "scripts": {
+        "build": "npx tailwindcss -i resources/css/app.css -o public/build/app.css --minify",
+        "watch": "npx tailwindcss -i resources/css/app.css -o public/build/app.css --watch"
+    }
 }

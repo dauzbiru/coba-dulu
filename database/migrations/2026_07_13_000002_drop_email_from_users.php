@@ -9,8 +9,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex('users_email_unique');
-            $table->dropColumn(['email', 'email_verified_at']);
+            $columns = array_filter(['email', 'email_verified_at'], fn ($col) => Schema::hasColumn('users', $col));
+            if ($columns) {
+                $table->dropColumn($columns);
+            }
         });
     }
 
